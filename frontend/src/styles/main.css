@@ -1,0 +1,226 @@
+:root {
+  --pine: #15362a;
+  --pine-2: #1d4736;
+  --leaf: #3b6b4a;
+  --sage: #7fa07f;
+  --paper: #f6f3ea;
+  --paper-2: #efebde;
+  --ink: #1b211d;
+  --ink-soft: #46514a;
+  --line: #d8d2c2;
+  --safe: #3f9d63;
+  --caution: #dca32a;
+  --avoid: #cf5340;
+  --safe-bg: #e7f1e8;
+  --caution-bg: #f8efd6;
+  --avoid-bg: #f7e3dd;
+  --gem: #3d6df0;
+  --gem-bg: #e8eefe;
+  --nav-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'IBM Plex Sans Thai', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.7;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  padding-bottom: calc(var(--nav-h) + var(--safe-bottom));
+}
+h1, h2, h3, h4 { font-family: 'Bai Jamjuree', sans-serif; font-weight: 600; line-height: 1.25; }
+code { font-family: 'IBM Plex Mono', monospace; }
+button { cursor: pointer; border: none; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+
+/* ── page wrapper ── */
+.page { padding: 20px 18px 24px; max-width: 480px; margin: 0 auto; min-height: calc(100dvh - var(--nav-h)); }
+.page-header { padding: 18px 18px 0; max-width: 480px; margin: 0 auto; }
+.page-title { font-size: 22px; color: var(--pine); }
+.page-sub { font-size: 13.5px; color: var(--ink-soft); margin-top: 4px; font-weight: 300; }
+
+/* ── bottom nav ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(246,243,234,.95);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  display: flex;
+  padding-bottom: var(--safe-bottom);
+  height: calc(var(--nav-h) + var(--safe-bottom));
+}
+.tab-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; padding: 8px 0;
+  color: var(--ink-soft); transition: color .2s;
+}
+.tab-btn.active { color: var(--pine); }
+.tab-icon { font-size: 22px; line-height: 1; }
+.tab-label { font-size: 11px; font-weight: 400; letter-spacing: .02em; }
+.tab-btn.active .tab-label { font-weight: 600; color: var(--pine); }
+
+/* ── card ── */
+.card {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: 16px; padding: 18px 20px; margin-bottom: 14px;
+}
+
+/* ── btn ── */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 15px; border-radius: 14px;
+  font-family: 'Bai Jamjuree', sans-serif; font-size: 16px; font-weight: 600;
+  transition: opacity .2s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--pine); color: #fff; }
+.btn-secondary { background: var(--paper-2); color: var(--pine); border: 1px solid var(--line); }
+.btn-gem { background: var(--gem); color: #fff; }
+.btn:disabled { opacity: .5; pointer-events: none; }
+
+/* ── form ── */
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-soft); margin-bottom: 6px; }
+.field input, .field textarea {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--line);
+  border-radius: 10px; font-size: 15px; color: var(--ink); background: #fff;
+  transition: border-color .2s;
+}
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--gem); }
+.field textarea { resize: vertical; min-height: 80px; }
+
+/* tag input chips */
+.tag-wrap {
+  display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 12px;
+  border: 1.5px solid var(--line); border-radius: 10px; background: #fff;
+  min-height: 46px; cursor: text;
+}
+.tag-wrap.focused { border-color: var(--gem); }
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--paper-2); border: 1px solid var(--line);
+  padding: 3px 10px; border-radius: 20px; font-size: 13px; color: var(--pine);
+}
+.tag .tag-x { font-size: 15px; color: var(--ink-soft); line-height: 1; cursor: pointer; }
+.tag-input {
+  border: none; outline: none; font-size: 14px; color: var(--ink);
+  background: transparent; min-width: 120px; flex: 1;
+}
+
+/* ── status badge ── */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 30px; font-family: 'Bai Jamjuree'; font-weight: 700; font-size: 17px;
+}
+.status-badge.safe    { background: var(--safe-bg);    color: #1e5c35; }
+.status-badge.caution { background: var(--caution-bg); color: #7a5210; }
+.status-badge.avoid   { background: var(--avoid-bg);   color: #8a2e1e; }
+
+/* ── ingredient list ── */
+.ingredient-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.ingredient-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 14px; color: var(--ink-soft); font-weight: 300;
+}
+.ingredient-item .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px;
+  background: var(--line);
+}
+.ingredient-item.flagged .dot { background: var(--avoid); }
+.ingredient-item.flagged { color: var(--ink); }
+.ingredient-item .flag-reason {
+  font-size: 12px; color: var(--avoid); font-weight: 400; margin-top: 2px;
+}
+
+/* ── camera area ── */
+.camera-wrap {
+  position: relative; width: 100%; border-radius: 18px; overflow: hidden;
+  background: #0f1e17; aspect-ratio: 3/4; max-height: 55dvh;
+}
+.camera-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera-wrap .cam-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.cam-frame {
+  width: 70%; aspect-ratio: 1; border: 2px solid rgba(255,255,255,.5); border-radius: 16px;
+  box-shadow: 0 0 0 2000px rgba(0,0,0,.35);
+}
+.camera-placeholder {
+  width: 100%; border-radius: 18px; background: var(--pine-2);
+  aspect-ratio: 3/4; max-height: 55dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; color: var(--sage); border: 1px dashed #2c5743;
+}
+.camera-placeholder .ph-icon { font-size: 48px; }
+.camera-placeholder .ph-text { font-size: 14px; font-weight: 300; }
+
+/* ── loading ── */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(246,243,234,.92); backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+}
+.spinner {
+  width: 44px; height: 44px; border: 3px solid var(--line);
+  border-top-color: var(--gem); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 15px; color: var(--ink-soft); font-weight: 300; }
+
+/* ── history item ── */
+.history-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--line);
+}
+.history-item:last-child { border-bottom: none; }
+.history-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.history-dot.safe    { background: var(--safe); }
+.history-dot.caution { background: var(--caution); }
+.history-dot.avoid   { background: var(--avoid); }
+.history-body { flex: 1; min-width: 0; }
+.history-name { font-family: 'Bai Jamjuree'; font-weight: 600; font-size: 15px; color: var(--pine); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-sum  { font-size: 12.5px; color: var(--ink-soft); font-weight: 300; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-time { font-size: 11.5px; color: var(--sage); font-family: 'IBM Plex Mono'; white-space: nowrap; }
+
+/* ── empty state ── */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--ink-soft);
+}
+.empty-state .es-icon { font-size: 48px; margin-bottom: 14px; }
+.empty-state .es-text { font-size: 15px; font-weight: 300; }
+
+/* ── install banner ── */
+.install-banner {
+  position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom) + 10px);
+  left: 10px; right: 10px; z-index: 90;
+  background: var(--pine); color: #fff; border-radius: 16px;
+  padding: 14px 18px; display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.25);
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+.install-banner .ib-text { flex: 1; font-size: 13.5px; font-weight: 300; }
+.install-banner .ib-text b { font-family: 'Bai Jamjuree'; font-weight: 700; display: block; font-size: 15px; }
+.install-banner .ib-btn { background: var(--safe); color: #fff; padding: 8px 16px; border-radius: 10px; font-family: 'Bai Jamjuree'; font-weight: 600; font-size: 14px; }
+.install-banner .ib-close { font-size: 20px; color: var(--sage); padding: 4px; }
+
+/* ── disclaimer ── */
+.disclaimer {
+  background: var(--caution-bg); border: 1px solid #e8c96a;
+  border-radius: 12px; padding: 12px 14px; font-size: 12.5px;
+  color: #6b4d10; font-weight: 300; margin-top: 14px; line-height: 1.6;
+}
+
+/* ── divider ── */
+.section-label {
+  font-size: 11.5px; font-weight: 500; color: var(--sage);
+  letter-spacing: .12em; text-transform: uppercase;
+  font-family: 'IBM Plex Mono'; margin: 20px 0 10px;
+}

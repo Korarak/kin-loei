@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กินเลย — Blueprint Mark 2 (Gemini-powered)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pine:#15362a; --pine-2:#1d4736; --leaf:#3b6b4a; --sage:#7fa07f;
+    --paper:#f6f3ea; --paper-2:#efebde; --ink:#1b211d; --ink-soft:#46514a; --line:#d8d2c2;
+    --safe:#3f9d63; --caution:#dca32a; --avoid:#cf5340;
+    --safe-bg:#e7f1e8; --caution-bg:#f8efd6; --avoid-bg:#f7e3dd;
+    --gem:#3d6df0; --gem-2:#8a4fe0; --gem-bg:#e8eefe;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--paper);color:var(--ink);line-height:1.75;font-weight:300;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  h1,h2,h3,h4,.display{font-family:'Bai Jamjuree',sans-serif;font-weight:600;line-height:1.2}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+  section{padding:92px 0;position:relative}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--leaf);font-weight:500;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+  .eyebrow::before{content:"";width:28px;height:1px;background:var(--leaf);display:inline-block}
+
+  /* nav */
+  .nav{position:sticky;top:0;z-index:50;background:rgba(246,243,234,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .nav-inner{max-width:1080px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .brand{font-family:'Bai Jamjuree';font-weight:700;font-size:19px;color:var(--pine);display:flex;align-items:center;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gem);box-shadow:0 0 0 3px var(--gem-bg)}
+  .brand .mk{font-family:'IBM Plex Mono';font-size:11px;color:var(--gem);font-weight:500;letter-spacing:.1em;background:var(--gem-bg);padding:2px 8px;border-radius:20px}
+  .nav-links{display:flex;gap:4px;flex-wrap:wrap}
+  .nav-links a{font-size:13.5px;color:var(--ink-soft);text-decoration:none;padding:7px 13px;border-radius:8px;transition:.2s;font-weight:400}
+  .nav-links a:hover{background:var(--paper-2);color:var(--pine)}
+  .nav-links a.active{background:var(--pine);color:var(--paper)}
+  @media(max-width:920px){.nav-links{display:none}}
+
+  /* hero */
+  .hero{background:var(--pine);color:var(--paper);overflow:hidden;position:relative}
+  .hero-grid{max-width:1080px;margin:0 auto;padding:96px 28px 88px;display:grid;grid-template-columns:1.25fr .9fr;gap:56px;align-items:center}
+  .hero .eyebrow{color:var(--sage)}
+  .hero .eyebrow::before{background:var(--sage)}
+  .hero h1{font-size:clamp(40px,6vw,66px);font-weight:700;letter-spacing:-.01em;color:#fff}
+  .hero h1 .accent{color:var(--safe)}
+  .hero .mk-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(61,109,240,.16);border:1px solid #3d6df0;color:#bcccfb;font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.08em;padding:6px 14px;border-radius:30px;margin-top:18px}
+  .hero .mk-badge b{color:#fff;font-weight:500}
+  .hero .lead{font-size:18px;color:#d6e0d4;font-weight:300;margin-top:20px;max-width:44ch}
+  .hero-meta{margin-top:34px;display:flex;gap:28px;flex-wrap:wrap}
+  .hero-meta .item{border-left:2px solid var(--leaf);padding-left:14px}
+  .hero-meta .k{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--sage)}
+  .hero-meta .v{font-family:'Bai Jamjuree';font-size:16px;font-weight:500;color:#fff;margin-top:2px}
+
+  /* phone mock with gemini */
+  .device{background:var(--pine-2);border:1px solid #2c5743;border-radius:26px;padding:20px;position:relative}
+  .device-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .device-top .t{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sage)}
+  .gem-pill{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono';font-size:10px;color:#bcccfb;background:rgba(61,109,240,.2);border:1px solid #3d6df0;padding:3px 9px;border-radius:20px}
+  .gem-pill .gd{width:7px;height:7px;border-radius:50%;background:var(--gem)}
+  .scan-frame{background:rgba(0,0,0,.22);border:1px dashed #356048;border-radius:14px;padding:16px;text-align:center;margin-bottom:14px}
+  .scan-frame .ph{font-size:32px}
+  .scan-frame .cap{font-size:12px;color:#8fa791;margin-top:4px}
+  .result{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:12px;background:rgba(0,0,0,.26);border:1px solid var(--avoid);margin-bottom:9px}
+  .result .bulb{width:26px;height:26px;border-radius:50%;flex:none;background:var(--avoid);box-shadow:0 0 18px 2px rgba(207,83,64,.5)}
+  .result .txt{font-family:'Bai Jamjuree';font-weight:500;font-size:14.5px;color:#f2d3cc}
+  .result .sub{font-size:11.5px;color:#b98c83;font-weight:300}
+  .gem-note{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:#9fb3d6;background:rgba(61,109,240,.1);border-radius:10px;padding:10px 12px}
+  .gem-note .gi{flex:none;font-size:13px}
+  @media(max-width:920px){.hero-grid{grid-template-columns:1fr;gap:40px}}
+
+  /* section heads */
+  .sec-head{max-width:64ch;margin-bottom:44px}
+  .sec-head h2{font-size:clamp(28px,4vw,40px);color:var(--pine);letter-spacing:-.01em}
+  .sec-head p{font-size:16.5px;color:var(--ink-soft);margin-top:14px;font-weight:300}
+
+  /* whats new banner */
+  .whatsnew{background:linear-gradient(180deg,var(--gem-bg),#f6f3ea);border:1px solid #c4d2f7;border-radius:var(--radius);padding:28px 32px;margin-bottom:8px}
+  .whatsnew h3{font-size:19px;color:var(--gem);display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .whatsnew .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 32px}
+  .whatsnew .it{display:flex;gap:11px;font-size:14px;color:var(--ink-soft);font-weight:300}
+  .whatsnew .it b{color:var(--pine);font-weight:500;font-family:'Bai Jamjuree'}
+  .whatsnew .it .ar{color:var(--gem);flex:none}
+  @media(max-width:680px){.whatsnew .grid{grid-template-columns:1fr}}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .step{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px 20px;position:relative;transition:.25s}
+  .step:hover{transform:translateY(-4px);border-color:var(--gem);box-shadow:0 12px 30px -18px rgba(61,109,240,.4)}
+  .step .no{font-family:'IBM Plex Mono';font-size:12px;color:var(--gem);font-weight:500;letter-spacing:.1em}
+  .step h3{font-size:17px;margin:12px 0 8px;color:var(--pine)}
+  .step p{font-size:14px;color:var(--ink-soft);font-weight:300}
+  .step .ico{font-size:24px;margin-bottom:6px}
+  .step .gem-tag{margin-top:12px;display:inline-flex;align-items:center;gap:5px;font-family:'IBM Plex Mono';font-size:10.5px;color:var(--gem);background:var(--gem-bg);padding:3px 9px;border-radius:20px}
+  @media(max-width:860px){.steps{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.steps{grid-template-columns:1fr}}
+
+  /* two approaches */
+  .approaches{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .appr{border-radius:var(--radius);padding:30px;border:1px solid var(--line);background:#fff;position:relative;overflow:hidden}
+  .appr.rec{border-color:var(--gem);border-width:1.5px}
+  .appr .rec-flag{position:absolute;top:0;right:0;background:var(--gem);color:#fff;font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.1em;padding:5px 14px;border-bottom-left-radius:12px}
+  .appr .atag{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--leaf)}
+  .appr h3{font-size:21px;color:var(--pine);margin:8px 0 6px}
+  .appr .ad{font-size:14px;color:var(--ink-soft);font-weight:300;margin-bottom:18px}
+  .appr ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+  .appr li{font-size:13.5px;color:var(--ink-soft);padding-left:22px;position:relative;font-weight:300}
+  .appr li::before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:50%;background:var(--leaf)}
+  .appr.rec li::before{background:var(--gem)}
+  .appr .verdict{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;font-weight:300}
+  .appr .verdict b{font-family:'Bai Jamjuree';font-weight:500}
+  .appr.rec .verdict b{color:var(--gem)}
+  @media(max-width:760px){.approaches{grid-template-columns:1fr}}
+
+  /* arch layers */
+  .arch{display:flex;flex-direction:column;gap:14px}
+  .layer{border-radius:var(--radius);padding:22px 26px;border:1px solid var(--line);background:#fff;display:grid;grid-template-columns:210px 1fr;gap:24px;align-items:center}
+  .layer .ltitle{font-family:'Bai Jamjuree';font-weight:600;font-size:17px;color:var(--pine)}
+  .layer .lsub{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);margin-top:3px}
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{font-size:13px;background:var(--paper-2);border:1px solid var(--line);padding:6px 13px;border-radius:20px;color:var(--ink-soft);font-weight:400}
+  .chip b{color:var(--pine);font-weight:500}
+  .layer.gem{background:#13243f;border-color:#24407a}
+  .layer.gem .ltitle{color:#fff}
+  .layer.gem .lsub{color:#7e9fe6}
+  .layer.gem .chip{background:#1c3158;border-color:#2a477f;color:#c3d2f2}
+  .layer.gem .chip b{color:#fff}
+  .flowline{display:flex;justify-content:center;color:var(--sage);font-size:18px}
+  @media(max-width:680px){.layer{grid-template-columns:1fr;gap:14px}}
+
+  /* feasibility / playstore */
+  .feas{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+  .fcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+  .fcard h3{font-size:18px;color:var(--pine);margin-bottom:6px;display:flex;align-items:center;gap:9px}
+  .fcard .badge{font-size:11px;font-family:'IBM Plex Mono';padding:3px 10px;border-radius:20px;font-weight:500}
+  .b-ok{background:var(--safe-bg);color:#2c6d42}
+  .b-watch{background:var(--caution-bg);color:#8a6516}
+  .fcard ul{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:10px}
+  .fcard li{font-size:13.5px;color:var(--ink-soft);padding-left:22px;position:relative;font-weight:300}
+  .fcard li::before{content:"→";position:absolute;left:0;color:var(--leaf)}
+  @media(max-width:680px){.feas{grid-template-columns:1fr}}
+
+  /* cost table */
+  .costwrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:24px}
+  .costwrap table{width:100%;border-collapse:collapse;font-size:14px}
+  .costwrap th{background:var(--pine);color:#fff;font-family:'Bai Jamjuree';font-weight:500;text-align:left;padding:13px 18px;font-size:13.5px}
+  .costwrap td{padding:13px 18px;border-top:1px solid var(--line);color:var(--ink-soft);font-weight:300}
+  .costwrap tr:nth-child(even) td{background:var(--paper)}
+  .costwrap td b{color:var(--pine);font-weight:500}
+  .cost-note{font-size:13px;color:var(--ink-soft);margin-top:14px;font-weight:300;background:var(--gem-bg);border-radius:10px;padding:14px 18px;border:1px solid #c4d2f7}
+  .cost-note b{color:var(--gem);font-weight:500}
+
+  /* sgsc */
+  .sgsc{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .pillar{border-radius:var(--radius);padding:30px;border:1px solid var(--line);background:#fff;position:relative;overflow:hidden;transition:.25s}
+  .pillar:hover{box-shadow:0 16px 40px -24px rgba(21,54,42,.5);transform:translateY(-3px)}
+  .pillar::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+  .pillar.smart::before{background:var(--gem)}
+  .pillar.green::before{background:var(--safe)}
+  .pillar.safe::before{background:var(--avoid)}
+  .pillar.creative::before{background:var(--gem-2)}
+  .pillar .ptag{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+  .pillar.smart .ptag{color:var(--gem)}
+  .pillar.green .ptag{color:var(--safe)}
+  .pillar.safe .ptag{color:var(--avoid)}
+  .pillar.creative .ptag{color:var(--gem-2)}
+  .pillar h3{font-size:22px;color:var(--pine);margin:8px 0 12px}
+  .pillar p{font-size:14.5px;color:var(--ink-soft);font-weight:300}
+  .pillar ul{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:9px}
+  .pillar li{font-size:13.5px;color:var(--ink-soft);padding-left:20px;position:relative;font-weight:300}
+  .pillar li::before{content:"→";position:absolute;left:0;color:var(--leaf)}
+  @media(max-width:760px){.sgsc{grid-template-columns:1fr}}
+
+  /* roadmap */
+  .road{position:relative;padding-left:30px}
+  .road::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--line)}
+  .phase{position:relative;padding:0 0 36px 28px}
+  .phase::before{content:"";position:absolute;left:-30px;top:5px;width:16px;height:16px;border-radius:50%;background:var(--paper);border:3px solid var(--leaf)}
+  .phase.now::before{background:var(--gem);border-color:var(--gem);box-shadow:0 0 0 4px var(--gem-bg)}
+  .phase .ph{font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.1em;color:var(--leaf);text-transform:uppercase}
+  .phase.now .ph{color:var(--gem)}
+  .phase h3{font-size:19px;color:var(--pine);margin:5px 0 8px}
+  .phase p{font-size:14.5px;color:var(--ink-soft);font-weight:300}
+  .phase .tags{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
+  .phase .tags span{font-size:12.5px;background:#fff;border:1px solid var(--line);padding:4px 11px;border-radius:6px;color:var(--ink-soft)}
+
+  /* ethics */
+  .ethics{background:var(--avoid-bg);border:1px solid #e3b3a8;border-radius:var(--radius);padding:26px 30px;display:flex;gap:18px;align-items:flex-start;margin-top:30px}
+  .ethics .badge{font-size:26px;flex:none}
+  .ethics h4{font-size:17px;color:#9a3a28;margin-bottom:6px}
+  .ethics p{font-size:14.5px;color:#7d3526;font-weight:300}
+
+  /* footer */
+  footer{background:var(--pine);color:var(--paper);padding:64px 0 40px}
+  footer .f-grid{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;align-items:flex-end}
+  footer h3{font-size:26px;color:#fff;font-weight:700}
+  footer .ftag{color:var(--sage);font-family:'IBM Plex Mono';font-size:12px;letter-spacing:.15em;text-transform:uppercase;margin-top:8px}
+  footer .team{text-align:right;font-size:14px;color:#c4d2c4;font-weight:300}
+  footer .team b{color:#fff;font-weight:500;font-family:'Bai Jamjuree'}
+  footer .rule{height:1px;background:#2c5743;margin:36px 0 22px}
+  footer .fine{font-size:12.5px;color:#8fa791;font-weight:300}
+  @media(max-width:600px){footer .f-grid{flex-direction:column;align-items:flex-start}footer .team{text-align:left}}
+
+  .reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand"><span class="dot"></span>กินเลย<span class="mk">MARK 2</span></div>
+    <div class="nav-links">
+      <a href="#new">มีอะไรใหม่</a>
+      <a href="#concept">แนวคิด</a>
+      <a href="#approach">ทางเลือก AI</a>
+      <a href="#arch">สถาปัตยกรรม</a>
+      <a href="#feasibility">ความเป็นไปได้</a>
+      <a href="#cost">ต้นทุน</a>
+      <a href="#sgsc">SGSC</a>
+      <a href="#road">Roadmap</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow">System Blueprint · Mark 2</div>
+      <h1>กิน<span class="accent">เลย</span></h1>
+      <div class="mk-badge"><span style="width:7px;height:7px;border-radius:50%;background:var(--gem);display:inline-block"></span>ขับเคลื่อนด้วย <b>Gemini 3 Flash</b></div>
+      <p class="lead">เวอร์ชันที่ใช้ AI multimodal ตัวเดียวจบ — อ่านฉลาก ระบุส่วนผสม สืบค้นข้อมูล และประเมินความเสี่ยงตามโรคประจำตัว พร้อมเป้าหมายเป็น Hybrid App ขึ้น Play Store</p>
+      <div class="hero-meta">
+        <div class="item"><div class="k">ทีม</div><div class="v">สามหัวหมูตุ๋น</div></div>
+        <div class="item"><div class="k">เป้าหมาย</div><div class="v">Hybrid → Play Store</div></div>
+        <div class="item"><div class="k">AI หลัก</div><div class="v">Gemini 3 Flash</div></div>
+      </div>
+    </div>
+    <div class="device">
+      <div class="device-top"><span class="t">กินเลย · สแกน</span><span class="gem-pill"><span class="gd"></span>Gemini</span></div>
+      <div class="scan-frame"><div class="ph">🍜📷</div><div class="cap">บะหมี่กึ่งสำเร็จรูป · กำลังวิเคราะห์</div></div>
+      <div class="result"><span class="bulb"></span><span><span class="txt">ควรเลี่ยง</span><br><span class="sub">มีผงกุ้ง · คุณระบุว่าแพ้กุ้ง</span></span></div>
+      <div class="gem-note"><span class="gi">✨</span><span>Gemini อ่านฉลาก ระบุ "ผงกุ้ง" และเทียบกับโปรไฟล์แพ้กุ้งของคุณในขั้นตอนเดียว</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- WHAT'S NEW -->
+<section id="new">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Mark 1 → Mark 2</div>
+      <h2>เปลี่ยนแกน AI มาเป็น Gemini</h2>
+      <p>Mark 1 ใช้หลายเครื่องมือต่อกัน (OCR + Vision + NLP + Rule Engine แยกชิ้น) ส่วน Mark 2 ยุบรวมงานความเข้าใจภาพและภาษาทั้งหมดมาที่ Gemini 3 Flash ตัวเดียว ทำให้ระบบเรียบง่ายขึ้น พัฒนาเร็วขึ้น และฉลาดขึ้น</p>
+    </div>
+    <div class="whatsnew reveal">
+      <h3>✨ ทำไม Gemini 3 Flash เหมาะกับกินเลย</h3>
+      <div class="grid">
+        <div class="it"><span class="ar">→</span><span><b>Multimodal ในตัว</b> — รับภาพฉลาก/อาหารเข้าไปตรงๆ ได้เลย ไม่ต้องต่อ OCR แยก</span></div>
+        <div class="it"><span class="ar">→</span><span><b>Search Grounding</b> — สืบค้นข้อมูลส่วนผสม/สารก่อภูมิแพ้สดใหม่จาก Google ได้</span></div>
+        <div class="it"><span class="ar">→</span><span><b>Structured Output</b> — ให้ตอบเป็น JSON ที่แอปนำไปแสดงผล 🟢🟡🔴 ได้ทันที</span></div>
+        <div class="it"><span class="ar">→</span><span><b>Free Tier</b> — ทดลองและทำ MVP ได้ฟรี เหมาะกับทีมนักศึกษา</span></div>
+        <div class="it"><span class="ar">→</span><span><b>Context Caching</b> — แคชโปรไฟล์/ฐานข้อมูลโรค ลดต้นทุนเรียกซ้ำ</span></div>
+        <div class="it"><span class="ar">→</span><span><b>เข้าใจภาษาไทย</b> — อ่านฉลากไทยและตอบภาษาไทยได้ดี รองรับอีสานได้</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONCEPT -->
+<section id="concept" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Concept Flow · Gemini-powered</div>
+      <h2>สี่ก้าว — แต่สมองเดียว</h2>
+      <p>ขั้นตอนยังเหมือนเดิม แต่ขั้นที่ 3 และ 4 ซึ่งเคยแยกเป็นหลายโมเดล ตอนนี้ Gemini จัดการในการเรียกครั้งเดียว</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><div class="ico">🧑‍⚕️</div><div class="no">STEP 01</div><h3>สร้างโปรไฟล์สุขภาพ</h3><p>กรอกโรคประจำตัว อาหารที่เคยแพ้ และอาการผิดปกติ เก็บในเครื่อง</p><span class="gem-tag">On-device</span></div>
+      <div class="step reveal"><div class="ico">📷</div><div class="no">STEP 02</div><h3>ถ่ายภาพผลิตภัณฑ์</h3><p>ถ่ายภาพอาหารหรือฉลาก ทั้งก่อน/หลังแปรรูป ส่งเข้าระบบ</p><span class="gem-tag">On-device</span></div>
+      <div class="step reveal"><div class="ico">✨</div><div class="no">STEP 03</div><h3>Gemini อ่าน + ระบุ</h3><p>Gemini วิเคราะห์ภาพ อ่านฉลาก และดึงรายการส่วนประกอบทั้งหมด</p><span class="gem-tag">Gemini 3 Flash</span></div>
+      <div class="step reveal"><div class="ico">🚦</div><div class="no">STEP 04</div><h3>ประเมิน + แนะนำ</h3><p>เทียบกับโปรไฟล์ + สืบค้นข้อมูล ให้ผล 🟢🟡🔴 พร้อมเหตุผล <b>แนะนำ ไม่ตัดสิน</b></p><span class="gem-tag">Gemini 3 Flash</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- APPROACHES -->
+<section id="approach">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Architecture Decision</div>
+      <h2>ใช้ Gemini ทั้งหมด หรือผสม ML เราเอง?</h2>
+      <p>มีสองทางเลือกหลักในการวางสถาปัตยกรรม AI แต่ละทางมีข้อดีต่างกัน — ขึ้นกับเป้าหมายและทรัพยากรของทีม</p>
+    </div>
+    <div class="approaches">
+      <div class="appr rec reveal">
+        <div class="rec-flag">แนะนำสำหรับเริ่มต้น</div>
+        <div class="atag">Approach A</div>
+        <h3>Gemini-only</h3>
+        <p class="ad">ให้ Gemini 3 Flash จัดการทุกอย่าง — อ่านภาพ ระบุส่วนผสม สืบค้น ประเมินผล</p>
+        <ul>
+          <li>พัฒนาเร็วที่สุด ไม่ต้องเทรนหรือดูแลโมเดลเอง</li>
+          <li>ความแม่นยำสูงทันทีตั้งแต่วันแรก เพราะเป็นโมเดลระดับ frontier</li>
+          <li>อัปเกรดความสามารถตามที่ Google พัฒนาโมเดลใหม่</li>
+          <li>เหมาะกับทีมเล็กที่อยากออก MVP ขึ้น Play Store เร็ว</li>
+        </ul>
+        <div class="verdict"><b>เหมาะถ้า:</b> อยากเห็นผลงานใช้งานจริงเร็ว เน้นคุณภาพการวิเคราะห์ และยอมรับการพึ่งพา API ภายนอก</div>
+      </div>
+      <div class="appr reveal">
+        <div class="atag">Approach B</div>
+        <h3>Hybrid — Gemini + ML เราเอง</h3>
+        <p class="ad">ใช้ ML เบาบนเครื่องคัดกรองก่อน แล้วส่งต่อ Gemini เฉพาะเคสที่ต้องวิเคราะห์ลึก</p>
+        <ul>
+          <li>On-device ML (เช่น บาร์โค้ด/หมวดอาหาร) ทำงานฟรีและออฟไลน์</li>
+          <li>เรียก Gemini เฉพาะเมื่อจำเป็น ลดต้นทุน API ลงมาก</li>
+          <li>เป็นจุดขายเชิงวิชาการ — ทีมได้แสดงทักษะสร้างโมเดลเอง</li>
+          <li>ควบคุมข้อมูลและความเป็นส่วนตัวได้มากกว่าในบางขั้นตอน</li>
+        </ul>
+        <div class="verdict"><b>เหมาะถ้า:</b> อยากโชว์ทักษะ ML ของทีม ลดต้นทุนระยะยาว และมีเวลาพัฒนา/เทรนโมเดลเพิ่ม</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="arch" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Technical Architecture · Mark 2</div>
+      <h2>สถาปัตยกรรมที่เบาลง</h2>
+      <p>โครงสร้างแบบ Gemini-only (Approach A) — สังเกตว่าชั้น AI เหลือเพียง Gemini ตัวเดียว แทนที่จะเป็นหลายโมเดลต่อกัน</p>
+    </div>
+    <div class="arch">
+      <div class="layer reveal">
+        <div><div class="ltitle">Client Layer</div><div class="lsub">Hybrid App</div></div>
+        <div class="chips"><span class="chip"><b>Flutter</b> · UI + กล้อง</span><span class="chip"><b>ML Kit</b> · บาร์โค้ด (ออปชัน)</span><span class="chip"><b>SQLite</b> · โปรไฟล์ + แคช</span><span class="chip">Offline-first</span></div>
+      </div>
+      <div class="flowline reveal">↓</div>
+      <div class="layer reveal">
+        <div><div class="ltitle">Backend / Proxy</div><div class="lsub">Secure Gateway</div></div>
+        <div class="chips"><span class="chip"><b>FastAPI</b> · จัดการคำขอ</span><span class="chip">ซ่อน API Key ปลอดภัย</span><span class="chip">Auth + Rate Limit</span><span class="chip">Prompt + JSON Schema</span></div>
+      </div>
+      <div class="flowline reveal">↓</div>
+      <div class="layer gem reveal">
+        <div><div class="ltitle">✨ Gemini 3 Flash</div><div class="lsub">Multimodal Core</div></div>
+        <div class="chips"><span class="chip"><b>อ่านภาพ + ฉลาก</b></span><span class="chip"><b>ระบุส่วนผสม</b></span><span class="chip"><b>Search Grounding</b></span><span class="chip"><b>Structured JSON</b> 🟢🟡🔴</span></div>
+      </div>
+      <div class="flowline reveal">↓</div>
+      <div class="layer reveal">
+        <div><div class="ltitle">Data Layer</div><div class="lsub">Storage & Knowledge</div></div>
+        <div class="chips"><span class="chip"><b>PostgreSQL</b> · ผู้ใช้/ประวัติ</span><span class="chip"><b>Context Cache</b> · โปรไฟล์/โรค</span><span class="chip"><b>Medical KB</b> · อ้างอิงการแพทย์</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEASIBILITY -->
+<section id="feasibility">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Feasibility Study</div>
+      <h2>เป็นไปได้แค่ไหนที่จะขึ้น Play Store</h2>
+      <p>ประเมินความเป็นไปได้จริงของการทำ Hybrid App แล้วเผยแพร่บน Google Play — ทั้งด้านเทคนิคและด้านนโยบาย</p>
+    </div>
+    <div class="feas">
+      <div class="fcard reveal">
+        <h3>✅ ด้านเทคนิค <span class="badge b-ok">ทำได้จริง</span></h3>
+        <ul>
+          <li>Flutter build เป็นไฟล์ .aab/.apk ขึ้น Play Store ได้โดยตรง</li>
+          <li>Gemini API เรียกผ่าน HTTPS ได้จากแอปทุกแพลตฟอร์ม</li>
+          <li>กล้อง + ออฟไลน์แคช เป็นความสามารถมาตรฐานของ Flutter</li>
+          <li>MVP ใช้งานได้จริงทำได้ภายในกรอบเวลาโครงการ</li>
+        </ul>
+      </div>
+      <div class="fcard reveal">
+        <h3>⚠️ ด้านนโยบาย/ความปลอดภัย <span class="badge b-watch">ต้องวางแผน</span></h3>
+        <ul>
+          <li>อย่าฝัง API Key ในแอป — ต้องเรียกผ่าน Backend proxy เสมอ</li>
+          <li>ข้อมูลสุขภาพเป็นข้อมูลอ่อนไหว ต้องมี Privacy Policy + PDPA</li>
+          <li>Play Store ต้องการคำประกาศ Data Safety ที่ชัดเจน</li>
+          <li>ระบุชัดว่าเป็นผู้ช่วยให้ข้อมูล ไม่ใช่อุปกรณ์การแพทย์</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ethics reveal">
+      <span class="badge">⚠️</span>
+      <div>
+        <h4>หลักการสำคัญด้านการแพทย์</h4>
+        <p>กินเลยทำหน้าที่เป็นผู้ช่วยให้ข้อมูล ไม่ใช่เครื่องมือวินิจฉัยทางการแพทย์ ทุกคำแนะนำอยู่บนพื้นฐาน "เตือนและแนะนำ" พร้อมระบุชัดเจนว่าผู้ใช้ควรปรึกษาแพทย์หรือเภสัชกรสำหรับการตัดสินใจที่สำคัญ — ข้อความนี้ควรปรากฏทั้งในแอปและในหน้า Play Store</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COST -->
+<section id="cost" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Cost Estimation</div>
+      <h2>ต้นทุน Gemini ต่อการสแกน</h2>
+      <p>ประเมินคร่าวๆ จากราคา Gemini 3 Flash (Paid Tier) เพื่อให้เห็นภาพต้นทุนเมื่อมีผู้ใช้จริง — ตัวเลขเป็นการประมาณเพื่อวางแผน</p>
+    </div>
+    <div class="costwrap reveal">
+      <table>
+        <thead><tr><th>รายการ</th><th>ราคา (Paid Tier)</th><th>หมายเหตุ</th></tr></thead>
+        <tbody>
+          <tr><td><b>ทดลอง / MVP</b></td><td>ฟรี (Free Tier)</td><td>เหมาะกับช่วงพัฒนาและสาธิตโครงการ</td></tr>
+          <tr><td>Input (ภาพ + ข้อความ)</td><td>$0.50 / 1M tokens</td><td>หนึ่งภาพฉลากใช้โทเคนไม่มาก</td></tr>
+          <tr><td>Output (ผลวิเคราะห์)</td><td>$3.00 / 1M tokens</td><td>ตอบเป็น JSON สั้นๆ</td></tr>
+          <tr><td>Context Caching</td><td>$0.05 / 1M tokens</td><td>แคชโปรไฟล์/ฐานข้อมูลโรค ลดต้นทุน</td></tr>
+          <tr><td>Google Search Grounding</td><td>ฟรี 5,000 ครั้ง/เดือน</td><td>หลังจากนั้น $14 / 1,000 ครั้ง</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cost-note reveal"><b>ประเด็นสำคัญ:</b> ต้นทุนต่อการสแกนหนึ่งครั้งต่ำมาก (ระดับเศษสตางค์) และช่วงทำโครงการใช้ Free Tier ได้ฟรี เมื่อขยายผู้ใช้จริง การใช้ Context Caching และ Batch API (ลด 50%) จะช่วยคุมต้นทุนได้ดี ส่วน Approach B (ผสม ML เราเอง) จะช่วยลดจำนวนครั้งที่ต้องเรียก Gemini ลงอีก</div>
+  </div>
+</section>
+
+<!-- SGSC -->
+<section id="sgsc">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Guiding Framework</div>
+      <h2>Smart · Green · Safe · Creative</h2>
+      <p>กรอบสี่ด้านที่ Gemini ช่วยให้ทำได้จริงและดียิ่งขึ้นในเวอร์ชัน Mark 2</p>
+    </div>
+    <div class="sgsc">
+      <div class="pillar smart reveal">
+        <div class="ptag">Smart</div>
+        <h3>ฉลาดขึ้นด้วย Gemini</h3>
+        <p>โมเดล frontier วิเคราะห์ฉลากที่ซับซ้อนและสืบค้นข้อมูลส่วนผสมที่ไม่รู้จักได้เอง</p>
+        <ul>
+          <li>เข้าใจฉลากที่เขียนกำกวมหรือถ่ายภาพไม่ชัดได้ดีกว่า OCR ธรรมดา</li>
+          <li>สืบค้นสารก่อภูมิแพ้ที่เพิ่งมีข้อมูลใหม่ผ่าน Search Grounding</li>
+          <li>แนะนำทางเลือกที่เหมาะกว่าตามบริบทของผู้ใช้</li>
+        </ul>
+      </div>
+      <div class="pillar green reveal">
+        <div class="ptag">Green</div>
+        <h3>สุขภาพคู่ความยั่งยืน</h3>
+        <p>ให้ Gemini ประเมินและแนะนำในมิติสิ่งแวดล้อมควบคู่กับสุขภาพ</p>
+        <ul>
+          <li>แนะนำสินค้าท้องถิ่นจังหวัดเลยที่สดใหม่และเดินทางสั้น</li>
+          <li>ลดของเสียจากการซื้อผิด ส่งเสริมเกษตรอินทรีย์ในพื้นที่</li>
+          <li>ให้ข้อมูลโดยประมาณด้านผลกระทบสิ่งแวดล้อมของผลิตภัณฑ์</li>
+        </ul>
+      </div>
+      <div class="pillar safe reveal">
+        <div class="ptag">Safe</div>
+        <h3>ปลอดภัยและมีจริยธรรม</h3>
+        <p>จุดที่ละเอียดอ่อนที่สุดคือข้อมูลสุขภาพ ระบบต้องวางใจได้และโปร่งใส</p>
+        <ul>
+          <li>แนะนำและเตือนเท่านั้น — ไม่วินิจฉัย แนะให้ปรึกษาแพทย์เสมอ</li>
+          <li>เรียก Gemini ผ่าน Backend proxy ไม่เปิดเผย API Key</li>
+          <li>ทำตาม PDPA + Play Data Safety ผู้ใช้ลบข้อมูลตัวเองได้</li>
+        </ul>
+      </div>
+      <div class="pillar creative reveal">
+        <div class="ptag">Creative</div>
+        <h3>จากบุคคลสู่ระบบนิเวศ</h3>
+        <p>ความสามารถของ Gemini เปิดทางให้ฟีเจอร์ที่ทำได้ยากมาก่อน</p>
+        <ul>
+          <li>โหมดสนทนาด้วยเสียงสำหรับผู้สูงอายุ (Gemini Live ในอนาคต)</li>
+          <li>รองรับภาษาอีสาน เพราะ Gemini เข้าใจหลายภาษา</li>
+          <li>เปิด API ให้ รพ.สต./โรงเรียนในจังหวัดเลยต่อยอด</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="road" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Development Roadmap · to Play Store</div>
+      <h2>เส้นทางสู่ Play Store</h2>
+      <p>แบ่งเป็นเฟสที่จับต้องได้ เริ่มจาก MVP บน Free Tier แล้วค่อยขยายสู่การเผยแพร่จริง</p>
+    </div>
+    <div class="road">
+      <div class="phase now reveal">
+        <div class="ph">Phase 1 · เริ่มที่นี่</div>
+        <h3>MVP — Gemini-only บน Free Tier</h3>
+        <p>โปรไฟล์สุขภาพ + ถ่ายภาพ + เรียก Gemini ให้ตอบ JSON 🟢🟡🔴 พร้อมเหตุผล ทดสอบกับฉลากจริงในจังหวัดเลย</p>
+        <div class="tags"><span>Flutter</span><span>Gemini 3 Flash</span><span>FastAPI proxy</span><span>Free Tier</span></div>
+      </div>
+      <div class="phase reveal">
+        <div class="ph">Phase 2</div>
+        <h3>ออฟไลน์ + ประวัติ + แคช</h3>
+        <p>เพิ่ม SQLite offline-first, Context Caching ลดต้นทุน, ประวัติการสแกน, ปรับ prompt ให้แม่นยำขึ้น</p>
+        <div class="tags"><span>SQLite</span><span>Context Cache</span><span>Search Grounding</span></div>
+      </div>
+      <div class="phase reveal">
+        <div class="ph">Phase 3 · เผยแพร่</div>
+        <h3>ขึ้น Play Store</h3>
+        <p>เตรียม Privacy Policy + Data Safety, Backend production, ทดสอบ Closed Testing แล้วเผยแพร่จริง</p>
+        <div class="tags"><span>Play Console</span><span>PDPA</span><span>Closed Testing</span><span>Release</span></div>
+      </div>
+      <div class="phase reveal">
+        <div class="ph">Phase 4 · ต่อยอด</div>
+        <h3>ท้องถิ่น + ML เราเอง</h3>
+        <p>เพิ่มภาษาอีสาน/เสียงพูด, ผสม ML บนเครื่อง (Approach B) ลดต้นทุน, เปิด API ให้ รพ.สต. และขยายพื้นที่</p>
+        <div class="tags"><span>Voice</span><span>On-device ML</span><span>Public API</span><span>Scale-out</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="f-grid">
+      <div>
+        <h3>กินเลย · Mark 2</h3>
+        <div class="ftag">ขับเคลื่อนด้วย Gemini · มุ่งสู่ Play Store</div>
+      </div>
+      <div class="team">
+        <b>ทีมสามหัวหมูตุ๋น</b><br>
+        นักศึกษา ปวส. สาขาเทคโนโลยีสารสนเทศ<br>
+        จังหวัดเลย
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="fine">เอกสารแนวทางการพัฒนาระบบ เวอร์ชัน Mark 2 · อ้างอิงข้อมูล Gemini 3 Flash Preview จาก Google AI for Developers (ราคาและความสามารถอาจเปลี่ยนแปลงได้ ควรตรวจสอบเอกสารทางการก่อนพัฒนาจริง)</div>
+  </div>
+</footer>
+
+<script>
+  const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+  const links=[...document.querySelectorAll('.nav-links a')];
+  const navIo=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){const id=e.target.id;links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+id))}})},{rootMargin:'-45% 0px -50% 0px'});
+  document.querySelectorAll('section[id]').forEach(s=>navIo.observe(s));
+</script>
+</body>
+</html>

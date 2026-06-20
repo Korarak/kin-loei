@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กินเลย — Implementation Plan · PWA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pine:#15362a;--pine-2:#1d4736;--leaf:#3b6b4a;--sage:#7fa07f;
+  --paper:#f6f3ea;--paper-2:#efebde;--ink:#1b211d;--ink-soft:#46514a;--line:#d8d2c2;
+  --safe:#3f9d63;--caution:#dca32a;--avoid:#cf5340;
+  --safe-bg:#e7f1e8;--caution-bg:#f8efd6;--avoid-bg:#f7e3dd;
+  --gem:#3d6df0;--gem-2:#8a4fe0;--gem-bg:#e8eefe;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--paper);color:var(--ink);line-height:1.75;font-weight:300;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Bai Jamjuree',sans-serif;font-weight:600;line-height:1.2}
+code,pre,.mono{font-family:'IBM Plex Mono',monospace}
+.wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+section{padding:80px 0}
+
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--leaf);font-weight:500;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.eyebrow::before{content:"";width:28px;height:1px;background:var(--leaf);display:inline-block}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(246,243,234,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1100px;margin:0 auto;padding:13px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-family:'Bai Jamjuree';font-weight:700;font-size:18px;color:var(--pine);display:flex;align-items:center;gap:10px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--gem);box-shadow:0 0 0 3px var(--gem-bg)}
+.brand .mk{font-family:'IBM Plex Mono';font-size:10.5px;color:var(--gem);background:var(--gem-bg);padding:2px 8px;border-radius:20px;letter-spacing:.08em}
+.nav-links{display:flex;gap:2px;flex-wrap:wrap}
+.nav-links a{font-size:13px;color:var(--ink-soft);text-decoration:none;padding:6px 11px;border-radius:8px;transition:.2s;white-space:nowrap}
+.nav-links a:hover{background:var(--paper-2);color:var(--pine)}
+.nav-links a.active{background:var(--pine);color:var(--paper)}
+@media(max-width:900px){.nav-links{display:none}}
+
+/* hero */
+.hero{background:var(--pine);color:var(--paper);padding:80px 0 72px}
+.hero .eyebrow{color:var(--sage)}
+.hero .eyebrow::before{background:var(--sage)}
+.hero h1{font-size:clamp(36px,5.5vw,60px);font-weight:700;color:#fff;letter-spacing:-.01em;margin-bottom:14px}
+.hero h1 span{color:var(--safe)}
+.hero .lead{font-size:17px;color:#cddacc;font-weight:300;max-width:52ch;line-height:1.8}
+.hero-badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.badge-pill{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.06em;padding:6px 14px;border-radius:24px;border:1px solid}
+.badge-pill.b-gem{background:rgba(61,109,240,.15);border-color:#3d6df0;color:#b8c9fb}
+.badge-pill.b-safe{background:rgba(63,157,99,.15);border-color:var(--safe);color:#9fd4b4}
+.badge-pill.b-warn{background:rgba(220,163,42,.15);border-color:var(--caution);color:#e8ca7a}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+@media(max-width:860px){.hero-grid{grid-template-columns:1fr}}
+
+/* pwa vs apk compare */
+.compare-card{background:var(--pine-2);border:1px solid #2c5743;border-radius:20px;padding:22px}
+.compare-card .title{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sage);margin-bottom:14px}
+.compare-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.compare-row:last-child{border-bottom:none}
+.compare-icon{font-size:16px;flex:none;width:24px;text-align:center;margin-top:1px}
+.compare-text .ct{font-family:'Bai Jamjuree';font-size:13.5px;font-weight:600;color:#fff}
+.compare-text .cs{font-size:12px;color:#8fa791;font-weight:300}
+
+/* sec head */
+.sec-head{max-width:62ch;margin-bottom:40px}
+.sec-head h2{font-size:clamp(26px,3.8vw,38px);color:var(--pine);letter-spacing:-.01em}
+.sec-head p{font-size:16px;color:var(--ink-soft);margin-top:12px;font-weight:300}
+
+/* stack grid */
+.stack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.scard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.scard .sico{font-size:26px;margin-bottom:10px}
+.scard .sname{font-family:'Bai Jamjuree';font-weight:600;font-size:15px;color:var(--pine)}
+.scard .sver{font-family:'IBM Plex Mono';font-size:10.5px;color:var(--gem);background:var(--gem-bg);padding:1px 7px;border-radius:10px;display:inline-block;margin:4px 0 6px}
+.scard .sdesc{font-size:12.5px;color:var(--ink-soft);font-weight:300;line-height:1.6}
+@media(max-width:700px){.stack-grid{grid-template-columns:1fr 1fr}}
+
+/* code block */
+.codeblock{background:#0f1e17;border-radius:var(--radius);overflow:hidden;margin:12px 0}
+.codeblock .cb-head{background:#162b1e;padding:9px 18px;display:flex;align-items:center;justify-content:space-between}
+.codeblock .cb-lang{font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage)}
+.codeblock .cb-file{font-family:'IBM Plex Mono';font-size:10.5px;color:#6b8f72}
+.codeblock pre{padding:16px 20px;overflow-x:auto;font-size:12.5px;line-height:1.75;color:#c8dac8}
+.codeblock pre .c{color:#5a7a5e}
+.codeblock pre .k{color:#bcccfb}
+.codeblock pre .s{color:#b8daa4}
+.codeblock pre .n{color:#e8d8b0}
+.codeblock pre .t{color:#f2c97d}
+
+/* file tree */
+.filetree{background:#0f1e17;border-radius:var(--radius);padding:18px 22px;font-family:'IBM Plex Mono';font-size:12.5px;line-height:2;color:#c8dac8}
+.filetree .d{color:#7fa07f}
+.filetree .fc{color:#bcccfb}
+.filetree .fg{color:#b8daa4}
+.filetree .c{color:#4a6b50}
+
+/* phase */
+.phases{display:flex;flex-direction:column;gap:0}
+.phase-block{display:grid;grid-template-columns:200px 1fr;gap:32px;padding:36px 0;border-bottom:1px solid var(--line);position:relative}
+.phase-block:last-child{border-bottom:none}
+.phase-block::before{content:"";position:absolute;left:98px;top:0;bottom:0;width:2px;background:var(--line)}
+.phase-num{text-align:right;padding-right:30px;position:relative}
+.phase-dot{width:16px;height:16px;border-radius:50%;background:var(--paper);border:3px solid var(--leaf);position:absolute;right:-9px;top:20px;z-index:1}
+.phase-block.active .phase-dot{background:var(--gem);border-color:var(--gem);box-shadow:0 0 0 5px var(--gem-bg)}
+.phase-tag{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--leaf)}
+.phase-block.active .phase-tag{color:var(--gem)}
+.phase-title-sm{font-family:'Bai Jamjuree';font-weight:600;font-size:16px;color:var(--pine);margin-top:4px}
+.phase-dur{font-size:12px;color:var(--ink-soft);margin-top:4px;font-weight:300}
+.phase-body h3{font-size:21px;color:var(--pine);margin-bottom:8px}
+.phase-body .desc{font-size:14px;color:var(--ink-soft);font-weight:300;margin-bottom:16px;line-height:1.75}
+@media(max-width:720px){.phase-block{grid-template-columns:1fr;gap:10px}.phase-block::before,.phase-dot{display:none}.phase-num{text-align:left;padding-right:0}}
+
+/* task */
+.tasks{display:flex;flex-direction:column;gap:10px}
+.task{background:#fff;border:1px solid var(--line);border-radius:10px;padding:15px 18px;display:flex;gap:14px;align-items:flex-start}
+.task-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;flex:none;margin-top:2px;color:var(--leaf);font-family:'IBM Plex Mono'}
+.task-body .tname{font-family:'Bai Jamjuree';font-size:15px;font-weight:600;color:var(--pine)}
+.task-body .tdesc{font-size:13px;color:var(--ink-soft);font-weight:300;margin-top:3px;line-height:1.65}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:11px;background:var(--paper-2);border:1px solid var(--line);padding:3px 10px;border-radius:14px;color:var(--ink-soft)}
+.chip.gem{background:var(--gem-bg);border-color:#c4d2f7;color:var(--gem)}
+.chip.safe{background:var(--safe-bg);border-color:#b3d9be;color:#2c6d42}
+.chip.warn{background:var(--caution-bg);border-color:#e8c96a;color:#8a6516}
+
+/* screens */
+.screens{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.screen{background:var(--pine-2);border:1px solid #2c5743;border-radius:18px;padding:16px 14px;min-height:230px}
+.screen .s-bar{width:40px;height:4px;background:#2c5743;border-radius:4px;margin:0 auto 14px}
+.screen .s-title{font-family:'Bai Jamjuree';font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;text-align:center}
+.screen .s-icon{font-size:28px;text-align:center;margin:6px 0}
+.screen .s-desc{font-size:10px;color:#8fa791;text-align:center;font-weight:300;line-height:1.6}
+.screen .s-el{background:rgba(0,0,0,.3);border-radius:8px;padding:7px 10px;margin-top:7px;font-size:11px;color:#c8dac8}
+.screen .s-btn{background:var(--gem);border-radius:8px;padding:7px 10px;text-align:center;font-size:11px;color:#fff;font-family:'Bai Jamjuree';font-weight:600;margin-top:9px}
+.screen .result-avoid{background:rgba(207,83,64,.2);border:1px solid var(--avoid);border-radius:8px;padding:8px 10px;font-size:11px;color:#f2d3cc;margin-top:8px;text-align:center}
+.screen .result-safe{background:rgba(63,157,99,.2);border:1px solid var(--safe);border-radius:8px;padding:8px 10px;font-size:11px;color:#9fd4b4;margin-top:8px;text-align:center}
+@media(max-width:800px){.screens{grid-template-columns:repeat(2,1fr)}}
+
+/* api table */
+.apitable{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line)}
+.apitable th{background:var(--pine);color:#fff;font-family:'Bai Jamjuree';font-weight:500;text-align:left;padding:11px 16px;font-size:13px}
+.apitable td{padding:11px 16px;border-top:1px solid var(--line);color:var(--ink-soft);font-weight:300;vertical-align:top}
+.apitable tr:nth-child(even) td{background:var(--paper)}
+.apitable td code{font-family:'IBM Plex Mono';font-size:12px;background:var(--paper-2);padding:2px 6px;border-radius:4px;color:var(--pine)}
+.method{font-family:'IBM Plex Mono';font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:4px;display:inline-block}
+.method.post{background:#e8eefe;color:var(--gem)}
+.method.get{background:var(--safe-bg);color:#2c6d42}
+.method.put{background:var(--caution-bg);color:#8a6516}
+.method.del{background:var(--avoid-bg);color:#9a3a28}
+
+/* deploy grid */
+.deploy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.deploy-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden}
+.deploy-card.rec{border-color:var(--gem);border-width:1.5px}
+.deploy-card .rec-flag{position:absolute;top:0;right:0;background:var(--gem);color:#fff;font-family:'IBM Plex Mono';font-size:10px;padding:4px 12px;border-bottom-left-radius:10px}
+.deploy-card h4{font-family:'Bai Jamjuree';font-size:17px;font-weight:600;color:var(--pine);margin-bottom:6px}
+.deploy-card .free{font-family:'IBM Plex Mono';font-size:11px;color:var(--safe);background:var(--safe-bg);padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:10px}
+.deploy-card ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.deploy-card li{font-size:13px;color:var(--ink-soft);padding-left:18px;position:relative;font-weight:300}
+.deploy-card li::before{content:"→";position:absolute;left:0;color:var(--leaf)}
+@media(max-width:700px){.deploy-grid{grid-template-columns:1fr}}
+
+/* checklist */
+.checklist{display:flex;flex-direction:column;gap:9px}
+.cli{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;color:var(--ink-soft);font-weight:300}
+.cli .cb{width:20px;height:20px;border-radius:5px;border:2px solid var(--line);flex:none;margin-top:2px}
+
+/* info / warn box */
+.infobox{background:var(--gem-bg);border:1px solid #c4d2f7;border-radius:var(--radius);padding:16px 20px;font-size:13.5px;color:#2a3f8a;font-weight:300;margin:14px 0}
+.infobox b{font-family:'Bai Jamjuree';font-weight:600}
+.warnbox{background:var(--caution-bg);border:1px solid #e8c96a;border-radius:var(--radius);padding:16px 20px;display:flex;gap:14px;margin:14px 0}
+.warnbox .wi{font-size:20px;flex:none}
+.warnbox .wt{font-size:13.5px;color:#6b4d10;font-weight:300}
+.warnbox .wt b{font-family:'Bai Jamjuree';font-weight:600}
+
+/* two col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+.reveal{opacity:0;transform:translateY(18px);transition:.65s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+footer{background:var(--pine);color:var(--paper);padding:52px 0 36px}
+footer .fg{display:flex;justify-content:space-between;gap:32px;flex-wrap:wrap;align-items:flex-end}
+footer h3{font-size:22px;color:#fff;font-weight:700}
+footer .ftag{color:var(--sage);font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.15em;text-transform:uppercase;margin-top:6px}
+footer .fright{text-align:right;font-size:13px;color:#c4d2c4;font-weight:300}
+footer .fright b{color:#fff;font-weight:500;font-family:'Bai Jamjuree'}
+footer .rule{height:1px;background:#2c5743;margin:30px 0 18px}
+footer .fine{font-size:12px;color:#8fa791;font-weight:300}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand"><span class="dot"></span>กินเลย<span class="mk">PWA PLAN</span></div>
+    <div class="nav-links">
+      <a href="#why">ทำไม PWA</a>
+      <a href="#stack">Tech Stack</a>
+      <a href="#structure">โครงสร้าง</a>
+      <a href="#screens">Screens</a>
+      <a href="#phase1">Phase 1</a>
+      <a href="#phase2">Phase 2</a>
+      <a href="#phase3">Phase 3</a>
+      <a href="#api">API</a>
+      <a href="#deploy">Deploy</a>
+      <a href="#checklist">Checklist</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Implementation Plan · PWA</div>
+        <h1>กินเลย<br><span>Progressive Web App</span></h1>
+        <p class="lead">เปลี่ยนจาก APK มาเป็น PWA — ติดตั้งได้จากเบราว์เซอร์ทันที ทำงานได้ทั้ง iOS และ Android ไม่ต้องผ่าน Play Store</p>
+        <div class="hero-badges">
+          <span class="badge-pill b-gem">Vite + Vanilla JS</span>
+          <span class="badge-pill b-gem">FastAPI · Python 3.12</span>
+          <span class="badge-pill b-gem">Gemini 2.0 Flash</span>
+          <span class="badge-pill b-safe">ติดตั้งได้บน Android &amp; iOS</span>
+          <span class="badge-pill b-warn">Deploy ฟรี · Cloudflare / Vercel</span>
+        </div>
+      </div>
+      <div class="compare-card">
+        <div class="title">PWA ดีกว่า APK ยังไง?</div>
+        <div class="compare-row">
+          <div class="compare-icon">🆓</div>
+          <div class="compare-text"><div class="ct">ไม่มีค่า Google Play ($25)</div><div class="cs">Deploy ตรง — ฟรีบน Cloudflare Pages / Vercel</div></div>
+        </div>
+        <div class="compare-row">
+          <div class="compare-icon">⚡</div>
+          <div class="compare-text"><div class="ct">อัปเดตทันที</div><div class="cs">ผู้ใช้ได้รับ version ใหม่เปิดเบราว์เซอร์ครั้งถัดไป — ไม่ต้อง review</div></div>
+        </div>
+        <div class="compare-row">
+          <div class="compare-icon">📱</div>
+          <div class="compare-text"><div class="ct">ทำงานได้ทั้ง Android + iOS</div><div class="cs">ไม่ต้องสร้างแยก — browser เดียวจบ</div></div>
+        </div>
+        <div class="compare-row">
+          <div class="compare-icon">📷</div>
+          <div class="compare-text"><div class="ct">เข้ากล้องได้จาก browser</div><div class="cs">MediaDevices API — ขอ permission เหมือน native app</div></div>
+        </div>
+        <div class="compare-row">
+          <div class="compare-icon">🔌</div>
+          <div class="compare-text"><div class="ct">Offline ได้ด้วย Service Worker</div><div class="cs">Cache assets + IndexedDB เก็บโปรไฟล์ในเครื่อง</div></div>
+        </div>
+        <div class="compare-row">
+          <div class="compare-icon">🏠</div>
+          <div class="compare-text"><div class="ct">"Add to Home Screen"</div><div class="cs">แสดง icon บน home screen เหมือน native app ไม่มี browser bar</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- WHY PWA -->
+<section id="why">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">PWA Criteria</div>
+      <h2>PWA ต้องมีอะไรบ้าง</h2>
+      <p>3 องค์ประกอบบังคับที่ทำให้เว็บกลายเป็น PWA ที่ติดตั้งได้จริง</p>
+    </div>
+    <div class="stack-grid reveal">
+      <div class="scard">
+        <div class="sico">📄</div>
+        <div class="sname">Web App Manifest</div>
+        <div class="sver">manifest.json</div>
+        <div class="sdesc">ไฟล์ JSON บอก browser ว่าแอปชื่ออะไร icon คืออะไร theme สี เปิดแบบ standalone (ไม่มี browser bar) — จำเป็นสำหรับ "Add to Home Screen"</div>
+      </div>
+      <div class="scard">
+        <div class="sico">⚙️</div>
+        <div class="sname">Service Worker</div>
+        <div class="sver">sw.js</div>
+        <div class="sdesc">JavaScript ที่รันใน background แยกจาก main thread — จัดการ cache ไฟล์ static และทำให้แอปโหลดได้แม้ offline ใช้ Workbox ช่วยเขียน</div>
+      </div>
+      <div class="scard">
+        <div class="sico">🔒</div>
+        <div class="sname">HTTPS</div>
+        <div class="sver">Required</div>
+        <div class="sdesc">Browser บังคับให้ PWA ทำงานบน HTTPS เท่านั้น — Cloudflare Pages และ Vercel ให้ HTTPS ฟรีทันทีโดยไม่ต้องตั้งค่าเพิ่ม</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section id="stack" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Tech Stack · PWA</div>
+      <h2>เครื่องมือที่ใช้พัฒนา</h2>
+      <p>เน้นเรียบง่าย ไม่มี framework ซับซ้อน — Vite จัดการ build ให้ ไม่ต้องตั้งค่า webpack</p>
+    </div>
+    <div class="stack-grid reveal">
+      <div class="scard">
+        <div class="sico">⚡</div>
+        <div class="sname">Vite</div>
+        <div class="sver">5.x</div>
+        <div class="sdesc">Build tool — dev server HMR เร็วมาก, build production เป็น static files พร้อม minify, รองรับ PWA plugin ในตัว</div>
+      </div>
+      <div class="scard">
+        <div class="sico">🌐</div>
+        <div class="sname">Vanilla JS / HTML / CSS</div>
+        <div class="sver">ES2022+</div>
+        <div class="sdesc">ไม่ใช้ framework — ทีมเรียนรู้ได้ง่าย, bundle size เล็ก, ไม่มี dependency hell, เหมาะกับ PWA ขนาด MVP</div>
+      </div>
+      <div class="scard">
+        <div class="sico">📦</div>
+        <div class="sname">vite-plugin-pwa</div>
+        <div class="sver">0.21.x</div>
+        <div class="sdesc">Generate manifest.json + Service Worker (Workbox) อัตโนมัติจาก config — ไม่ต้องเขียน sw.js เอง</div>
+      </div>
+      <div class="scard">
+        <div class="sico">💾</div>
+        <div class="sname">idb (IndexedDB)</div>
+        <div class="sver">8.x</div>
+        <div class="sdesc">เก็บ health profile และประวัติสแกนในเครื่อง — เป็น wrapper ที่ใช้ง่ายกว่า IndexedDB raw API ของ browser</div>
+      </div>
+      <div class="scard">
+        <div class="sico">📷</div>
+        <div class="sname">MediaDevices API</div>
+        <div class="sver">Browser Built-in</div>
+        <div class="sdesc">เปิดกล้องมือถือผ่าน browser โดยตรง — <code>getUserMedia()</code> ขอ permission กล้อง, แสดง live preview, จับภาพเป็น canvas</div>
+      </div>
+      <div class="scard">
+        <div class="sico">⚡</div>
+        <div class="sname">FastAPI + Docker</div>
+        <div class="sver">0.115.x</div>
+        <div class="sdesc">Backend เหมือนเดิม — proxy Gemini API, เก็บ scan history ใน PostgreSQL, รัน local ด้วย docker compose</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROJECT STRUCTURE -->
+<section id="structure">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Project Structure</div>
+      <h2>โครงสร้างโปรเจก</h2>
+      <p>แบ่ง frontend (PWA) และ backend (FastAPI) เป็น 2 folder แยกกันภายใน repo เดียว</p>
+    </div>
+    <div class="two-col reveal">
+      <div>
+        <div style="font-family:'Bai Jamjuree';font-weight:600;font-size:16px;color:var(--pine);margin-bottom:10px">Frontend — PWA</div>
+        <div class="filetree">
+<span class="d">frontend/</span>
+├── <span class="fg">index.html</span>           <span class="c"># entry HTML</span>
+├── <span class="fg">vite.config.js</span>      <span class="c"># Vite + PWA plugin</span>
+├── <span class="fg">package.json</span>
+├── <span class="d">public/</span>
+│   ├── <span class="fc">manifest.json</span>    <span class="c"># PWA manifest</span>
+│   └── <span class="d">icons/</span>           <span class="c"># icon 192 + 512px</span>
+└── <span class="d">src/</span>
+    ├── <span class="fg">main.js</span>          <span class="c"># entry JS + router</span>
+    ├── <span class="fg">api.js</span>           <span class="c"># fetch → FastAPI</span>
+    ├── <span class="fg">db.js</span>            <span class="c"># IndexedDB (idb)</span>
+    ├── <span class="fg">camera.js</span>        <span class="c"># MediaDevices API</span>
+    ├── <span class="d">pages/</span>
+    │   ├── <span class="fc">profile.js</span>   <span class="c"># หน้า 1</span>
+    │   ├── <span class="fc">scan.js</span>      <span class="c"># หน้า 2</span>
+    │   ├── <span class="fc">result.js</span>    <span class="c"># หน้า 3</span>
+    │   └── <span class="fc">history.js</span>   <span class="c"># หน้า 4</span>
+    └── <span class="d">styles/</span>
+        └── <span class="fg">main.css</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Bai Jamjuree';font-weight:600;font-size:16px;color:var(--pine);margin-bottom:10px">Backend — FastAPI (เหมือนเดิม)</div>
+        <div class="filetree">
+<span class="d">backend/</span>
+├── <span class="fg">Dockerfile</span>
+├── <span class="fg">requirements.txt</span>
+├── <span class="fg">main.py</span>
+├── <span class="d">core/</span>
+│   ├── <span class="fc">config.py</span>
+│   ├── <span class="fc">database.py</span>
+│   ├── <span class="fc">gemini.py</span>
+│   └── <span class="fc">models.py</span>
+└── <span class="d">routers/</span>
+    ├── <span class="fc">analyze.py</span>
+    └── <span class="fc">profile.py</span>
+
+<span class="d">root/</span>
+├── <span class="fg">docker-compose.yml</span>
+└── <span class="fg">.env</span>
+        </div>
+        <div class="infobox" style="margin-top:12px">
+          <b>สร้าง frontend folder:</b><br>
+          <code>npm create vite@latest frontend -- --template vanilla</code><br>
+          <code>cd frontend && npm install</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENS -->
+<section id="screens" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">UI · Single Page App</div>
+      <h2>4 หน้าหลัก — SPA Routing</h2>
+      <p>ใช้ Hash routing (<code>#/profile</code>, <code>#/scan</code> ฯลฯ) — ไม่ต้องตั้งค่า server-side routing</p>
+    </div>
+    <div class="screens reveal">
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">#/profile</div>
+        <div class="s-icon">🧑‍⚕️</div>
+        <div class="s-el">โรคประจำตัว<br><span style="color:#7fa07f;font-size:10px">เบาหวาน, ความดัน...</span></div>
+        <div class="s-el">อาหารที่แพ้<br><span style="color:#7fa07f;font-size:10px">กุ้ง, แป้งสาลี...</span></div>
+        <div class="s-btn">บันทึก → IndexedDB</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">#/scan</div>
+        <div class="s-icon">📷</div>
+        <div class="s-desc" style="background:rgba(0,0,0,.3);border-radius:10px;padding:16px 8px">
+          &lt;video&gt; live camera<br>
+          <span style="color:#4a6b50;font-size:9px">MediaDevices.getUserMedia()</span>
+        </div>
+        <div class="s-btn">📸 ถ่ายภาพ</div>
+        <div style="margin-top:6px;font-size:10px;color:#7fa07f;text-align:center">หรือ เลือกจาก Gallery</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">#/result</div>
+        <div class="s-icon">✨</div>
+        <div class="result-avoid">🔴 ควรเลี่ยง<br><span style="font-size:10px">พบผงกุ้ง · คุณแพ้กุ้ง</span></div>
+        <div style="margin-top:8px;font-size:10px;color:#8fa791;text-align:center">Gemini วิเคราะห์ 12 ส่วนผสม</div>
+        <div class="s-btn" style="background:#2c5743;margin-top:8px">สแกนใหม่</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">#/history</div>
+        <div class="s-icon">📋</div>
+        <div class="s-el" style="border-left:3px solid var(--safe)">🟢 บะหมี่เจ</div>
+        <div class="s-el" style="border-left:3px solid var(--avoid)">🔴 มาม่ากุ้ง</div>
+        <div class="s-el" style="border-left:3px solid var(--caution)">🟡 ขนมปัง</div>
+      </div>
+    </div>
+    <div class="warnbox reveal">
+      <div class="wi">📱</div>
+      <div class="wt"><b>Bottom Navigation Bar:</b> ใช้ CSS + JS ทำ fixed bottom nav ให้ดูเหมือน native app — position: fixed; bottom: 0 พร้อม safe-area-inset สำหรับ iPhone notch</div>
+    </div>
+  </div>
+</section>
+
+<!-- PHASE 1 -->
+<section id="phase1">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Phase 1 · เริ่มที่นี่</div>
+      <h2>MVP — Vite PWA + Gemini</h2>
+      <p>เป้าหมาย: เปิดเบราว์เซอร์บนมือถือ → ถ่ายรูปฉลาก → ได้ผล 🟢🟡🔴 → กด "Add to Home Screen" ได้</p>
+    </div>
+    <div class="phases">
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 1.1</div>
+          <div class="phase-title-sm">Init Vite Project</div>
+          <div class="phase-dur">~30 นาที</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>สร้าง Vite + ติดตั้ง PWA Plugin</h3>
+          <p class="desc">ใช้ vite-plugin-pwa จัดการ Service Worker + Manifest อัตโนมัติ</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">terminal</span></div>
+            <pre><span class="c"># สร้าง frontend project</span>
+npm create vite@latest frontend -- --template vanilla
+cd frontend
+
+<span class="c"># ติดตั้ง dependencies</span>
+npm install
+npm install -D vite-plugin-pwa
+npm install idb</pre>
+          </div>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">js</span><span class="cb-file">vite.config.js</span></div>
+            <pre><span class="k">import</span> { defineConfig } <span class="k">from</span> <span class="s">'vite'</span>
+<span class="k">import</span> { VitePWA } <span class="k">from</span> <span class="s">'vite-plugin-pwa'</span>
+
+<span class="k">export default</span> defineConfig({
+  plugins: [
+    VitePWA({
+      registerType: <span class="s">'autoUpdate'</span>,
+      manifest: {
+        name: <span class="s">'กินเลย'</span>,
+        short_name: <span class="s">'กินเลย'</span>,
+        description: <span class="s">'ผู้ช่วยตรวจสอบอาหารปลอดภัย จ.เลย'</span>,
+        theme_color: <span class="s">'#15362a'</span>,
+        background_color: <span class="s">'#f6f3ea'</span>,
+        display: <span class="s">'standalone'</span>,
+        orientation: <span class="s">'portrait'</span>,
+        start_url: <span class="s">'/'</span>,
+        icons: [
+          { src: <span class="s">'/icons/icon-192.png'</span>, sizes: <span class="s">'192x192'</span>, type: <span class="s">'image/png'</span> },
+          { src: <span class="s">'/icons/icon-512.png'</span>, sizes: <span class="s">'512x512'</span>, type: <span class="s">'image/png'</span> },
+        ],
+      },
+      workbox: {
+        globPatterns: [<span class="s">'**/*.{js,css,html,png,svg}'</span>],
+      },
+    }),
+  ],
+})</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 1.2</div>
+          <div class="phase-title-sm">SPA Router</div>
+          <div class="phase-dur">~1 วัน</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Hash Router + Bottom Nav</h3>
+          <p class="desc">Router อย่างง่ายที่ใช้ <code>window.location.hash</code> สลับระหว่าง 4 หน้า</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">js</span><span class="cb-file">src/main.js</span></div>
+            <pre><span class="k">import</span> { renderProfile } <span class="k">from</span> <span class="s">'./pages/profile.js'</span>
+<span class="k">import</span> { renderScan } <span class="k">from</span> <span class="s">'./pages/scan.js'</span>
+<span class="k">import</span> { renderResult } <span class="k">from</span> <span class="s">'./pages/result.js'</span>
+<span class="k">import</span> { renderHistory } <span class="k">from</span> <span class="s">'./pages/history.js'</span>
+
+<span class="k">const</span> routes = {
+  <span class="s">'#/profile'</span>: renderProfile,
+  <span class="s">'#/scan'</span>:    renderScan,
+  <span class="s">'#/result'</span>:  renderResult,
+  <span class="s">'#/history'</span>: renderHistory,
+}
+
+<span class="k">function</span> navigate() {
+  <span class="k">const</span> hash = location.hash || <span class="s">'#/scan'</span>
+  <span class="k">const</span> render = routes[hash] ?? renderScan
+  document.getElementById(<span class="s">'app'</span>).innerHTML = <span class="s">''</span>
+  render(document.getElementById(<span class="s">'app'</span>))
+  <span class="c">// update active tab</span>
+  document.querySelectorAll(<span class="s">'.tab-btn'</span>).forEach(b =>
+    b.classList.toggle(<span class="s">'active'</span>, b.dataset.href === hash))
+}
+
+window.addEventListener(<span class="s">'hashchange'</span>, navigate)
+navigate()</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 1.3</div>
+          <div class="phase-title-sm">Camera API</div>
+          <div class="phase-dur">~1 วัน</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>เปิดกล้องด้วย MediaDevices API</h3>
+          <p class="desc">ใช้ <code>&lt;video&gt;</code> แสดง live preview จากกล้อง และ <code>&lt;canvas&gt;</code> จับภาพเป็น blob ส่ง API</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">js</span><span class="cb-file">src/camera.js</span></div>
+            <pre><span class="k">export async function</span> startCamera(videoEl) {
+  <span class="k">const</span> stream = <span class="k">await</span> navigator.mediaDevices.getUserMedia({
+    video: { facingMode: <span class="s">'environment'</span> }, <span class="c">// กล้องหลัง</span>
+    audio: <span class="k">false</span>,
+  })
+  videoEl.srcObject = stream
+  <span class="k">return</span> stream
+}
+
+<span class="k">export function</span> captureFrame(videoEl) {
+  <span class="k">const</span> canvas = document.createElement(<span class="s">'canvas'</span>)
+  canvas.width  = videoEl.videoWidth
+  canvas.height = videoEl.videoHeight
+  canvas.getContext(<span class="s">'2d'</span>).drawImage(videoEl, <span class="k">0</span>, <span class="k">0</span>)
+  <span class="k">return new</span> Promise(res => canvas.toBlob(res, <span class="s">'image/jpeg'</span>, <span class="k">0.85</span>))
+}
+
+<span class="k">export function</span> stopCamera(stream) {
+  stream?.getTracks().forEach(t => t.stop())
+}</pre>
+          </div>
+          <div class="warnbox">
+            <div class="wi">⚠️</div>
+            <div class="wt"><b>HTTPS บังคับ:</b> <code>getUserMedia()</code> ทำงานได้เฉพาะบน HTTPS หรือ localhost — ระหว่าง dev ใช้ <code>npm run dev</code> (localhost) ปกติ แต่ถ้าทดสอบบนมือถือจริงผ่าน LAN ต้องใช้ <code>--host --https</code> หรือ ngrok</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 1.4</div>
+          <div class="phase-title-sm">API Client</div>
+          <div class="phase-dur">~4 ชั่วโมง</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>เชื่อม PWA → FastAPI</h3>
+          <p class="desc">ส่งรูปภาพและ health profile ไปยัง backend ผ่าน <code>fetch()</code> + FormData</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">js</span><span class="cb-file">src/api.js</span></div>
+            <pre><span class="k">const</span> BASE = <span class="k">import</span>.meta.env.VITE_API_URL ?? <span class="s">'http://localhost:8000'</span>
+
+<span class="k">export async function</span> scanFood({ deviceId, profile, imageBlob, text }) {
+  <span class="k">const</span> form = <span class="k">new</span> FormData()
+  form.append(<span class="s">'device_id'</span>, deviceId)
+  form.append(<span class="s">'health_profile'</span>, JSON.stringify(profile))
+  <span class="k">if</span> (imageBlob) form.append(<span class="s">'image'</span>, imageBlob, <span class="s">'scan.jpg'</span>)
+  <span class="k">if</span> (text)      form.append(<span class="s">'text_input'</span>, text)
+
+  <span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">`${BASE}/analyze/scan`</span>, { method: <span class="s">'POST'</span>, body: form })
+  <span class="k">if</span> (!res.ok) <span class="k">throw new</span> Error(<span class="k">await</span> res.text())
+  <span class="k">return</span> res.json()
+}
+
+<span class="k">export async function</span> getHistory(deviceId) {
+  <span class="k">const</span> res = <span class="k">await</span> fetch(<span class="s">`${BASE}/analyze/history/${deviceId}`</span>)
+  <span class="k">return</span> res.json()
+}</pre>
+          </div>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">env</span><span class="cb-file">.env.local (frontend)</span></div>
+            <pre><span class="c"># dev: ชี้ไป docker backend ที่รันบน localhost</span>
+VITE_API_URL=http://localhost:8000
+
+<span class="c"># production: ใส่ URL จริงของ backend ที่ deploy แล้ว</span>
+<span class="c"># VITE_API_URL=https://api.kinloei.example.com</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 1.5</div>
+          <div class="phase-title-sm">ทดสอบบนมือถือ</div>
+          <div class="phase-dur">~2 ชั่วโมง</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>ทดสอบ PWA บน Android จริง</h3>
+          <p class="desc">ใช้ ngrok เพื่อทดสอบ HTTPS บนมือถือจริงโดยไม่ต้อง deploy ก่อน</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">terminal</span></div>
+            <pre"><span class="c"># Terminal 1: รัน backend</span>
+docker compose up
+
+<span class="c"># Terminal 2: รัน frontend dev server</span>
+cd frontend && npm run dev
+
+<span class="c"># Terminal 3: expose frontend ผ่าน ngrok (HTTPS)</span>
+ngrok http 5173
+
+<span class="c"># เปิด https://xxxx.ngrok.io บน Chrome มือถือ</span>
+<span class="c"># Menu → "เพิ่มในหน้าจอหลัก" → ติดตั้งเป็น PWA ได้เลย</span></pre>
+          </div>
+          <div class="infobox">
+            <b>Chrome DevTools Remote Debug:</b> เปิด <code>chrome://inspect</code> บน PC → เชื่อมมือถือ USB → เห็น console log และ network จากมือถือบน PC ได้ตรงๆ
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PHASE 2 -->
+<section id="phase2" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Phase 2 · Offline & Polish</div>
+      <h2>IndexedDB, Service Worker Cache, UX</h2>
+      <p>ทำให้แอปทนทาน — โปรไฟล์อยู่ในเครื่อง, assets โหลดได้แม้ไม่มี net</p>
+    </div>
+    <div class="tasks">
+      <div class="task reveal">
+        <div class="task-check">2.1</div>
+        <div class="task-body">
+          <div class="tname">IndexedDB — Health Profile + ประวัติ</div>
+          <div class="tdesc">เก็บ health profile ลง IndexedDB ผ่าน <code>idb</code> library — ผู้ใช้ไม่ต้องกรอกซ้ำทุกครั้ง และเก็บ scan results ล่าสุด 50 รายการในเครื่อง</div>
+          <div class="chips"><span class="chip">idb</span><span class="chip gem">Offline-first</span><span class="chip">openDB → objectStore</span></div>
+        </div>
+      </div>
+      <div class="task reveal">
+        <div class="task-check">2.2</div>
+        <div class="task-body">
+          <div class="tname">Service Worker — Cache Static Assets</div>
+          <div class="tdesc">vite-plugin-pwa ใช้ Workbox สร้าง sw.js อัตโนมัติ — cache JS/CSS/HTML/icons ให้โหลดได้แม้ไม่มี internet และแสดง offline page ถ้า API ไม่ตอบ</div>
+          <div class="chips"><span class="chip">Workbox</span><span class="chip">Cache First strategy</span><span class="chip safe">Installable</span></div>
+        </div>
+      </div>
+      <div class="task reveal">
+        <div class="task-check">2.3</div>
+        <div class="task-body">
+          <div class="tname">Loading Skeleton + Progress Indicator</div>
+          <div class="tdesc">ขณะรอ Gemini วิเคราะห์ (3-8 วิ) แสดง animated skeleton cards และ progress bar — ทำให้แอปรู้สึก responsive ไม่ค้าง</div>
+          <div class="chips"><span class="chip">CSS animation</span><span class="chip">@keyframes pulse</span></div>
+        </div>
+      </div>
+      <div class="task reveal">
+        <div class="task-check">2.4</div>
+        <div class="task-body">
+          <div class="tname">Image Resize ก่อนส่ง API</div>
+          <div class="tdesc">ใช้ Canvas API resize ภาพให้ไม่เกิน 1024px และ compress เป็น JPEG 85% ก่อน fetch — ลด payload จาก ~5MB เหลือ ~200KB ส่งเร็วขึ้นมาก</div>
+          <div class="chips"><span class="chip">Canvas.toBlob()</span><span class="chip safe">ลด latency</span></div>
+        </div>
+      </div>
+      <div class="task reveal">
+        <div class="task-check">2.5</div>
+        <div class="task-body">
+          <div class="tname">PWA Install Prompt</div>
+          <div class="tdesc">ดัก <code>beforeinstallprompt</code> event แล้วแสดง custom banner "เพิ่มในหน้าจอหลัก" แทน browser default — ทำให้ UX ดูเป็นธรรมชาติมากกว่า</div>
+          <div class="chips"><span class="chip">beforeinstallprompt</span><span class="chip gem">Install Banner</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="codeblock reveal" style="margin-top:24px">
+      <div class="cb-head"><span class="cb-lang">js</span><span class="cb-file">src/db.js — IndexedDB setup</span></div>
+      <pre><span class="k">import</span> { openDB } <span class="k">from</span> <span class="s">'idb'</span>
+
+<span class="k">const</span> db = openDB(<span class="s">'kinloei'</span>, <span class="k">1</span>, {
+  upgrade(db) {
+    db.createObjectStore(<span class="s">'profile'</span>)           <span class="c">// health profile</span>
+    db.createObjectStore(<span class="s">'scans'</span>, { keyPath: <span class="s">'id'</span>, autoIncrement: <span class="k">true</span> })
+  },
+})
+
+<span class="k">export const</span> saveProfile = async (profile) =>
+  (await db).put(<span class="s">'profile'</span>, profile, <span class="s">'health'</span>)
+
+<span class="k">export const</span> getProfile = async () =>
+  (await db).get(<span class="s">'profile'</span>, <span class="s">'health'</span>) ?? {}
+
+<span class="k">export const</span> saveScan = async (result) =>
+  (await db).add(<span class="s">'scans'</span>, { ...result, savedAt: Date.now() })
+
+<span class="k">export const</span> getScans = async () =>
+  (await db).getAll(<span class="s">'scans'</span>)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- PHASE 3 -->
+<section id="phase3">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Phase 3 · Production</div>
+      <h2>Build และ Deploy จริง</h2>
+      <p>Build เป็น static files แล้ว deploy — ไม่ต้องตั้งค่า server, ได้ HTTPS ฟรีทันที</p>
+    </div>
+    <div class="phases">
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 3.1</div>
+          <div class="phase-title-sm">Build Production</div>
+          <div class="phase-dur">~5 นาที</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>npm run build → dist/</h3>
+          <p class="desc">Vite bundle JS/CSS ให้เล็กที่สุด และ vite-plugin-pwa inject Service Worker อัตโนมัติ</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">terminal</span></div>
+            <pre">cd frontend
+
+<span class="c"># ตั้ง API URL production ก่อน build</span>
+echo "VITE_API_URL=https://api.kinloei.your-domain.com" > .env.production
+
+<span class="c"># build</span>
+npm run build
+
+<span class="c"># ผลลัพธ์อยู่ที่ frontend/dist/</span>
+<span class="c"># — index.html, assets/, sw.js, manifest.json, icons/</span>
+
+<span class="c"># preview ก่อน deploy</span>
+npm run preview</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 3.2</div>
+          <div class="phase-title-sm">Deploy Backend</div>
+          <div class="phase-dur">~1 วัน</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Deploy FastAPI บน Railway (แนะนำ)</h3>
+          <p class="desc">Railway รัน Docker image ได้ตรง ไม่ต้องแก้ Dockerfile เลย มี free tier เพียงพอสำหรับ MVP</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">terminal</span></div>
+            <pre"><span class="c"># ติดตั้ง Railway CLI</span>
+npm install -g @railway/cli
+railway login
+
+<span class="c"># ใน folder backend/</span>
+railway init
+railway up
+
+<span class="c"># ตั้ง env vars ใน Railway dashboard</span>
+<span class="c"># GEMINI_API_KEY, POSTGRES_PASSWORD, SECRET_KEY</span>
+
+<span class="c"># Railway จะให้ URL เช่น:</span>
+<span class="c"># https://kinloei-backend-production.up.railway.app</span></pre>
+          </div>
+          <div class="infobox">
+            <b>PostgreSQL บน Railway:</b> Add plugin → PostgreSQL → Railway สร้าง DB และ inject <code>DATABASE_URL</code> ให้อัตโนมัติ ไม่ต้องตั้งค่าเพิ่ม
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 3.3</div>
+          <div class="phase-title-sm">Deploy Frontend</div>
+          <div class="phase-dur">~30 นาที</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Deploy dist/ บน Cloudflare Pages</h3>
+          <p class="desc">ลาก dist/ ขึ้น Cloudflare Pages — ได้ HTTPS ฟรี, CDN ทั่วโลก, unlimited bandwidth</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">terminal</span></div>
+            <pre"><span class="c"># ติดตั้ง Wrangler CLI</span>
+npm install -g wrangler
+wrangler login
+
+<span class="c"># Deploy frontend/dist/ ขึ้น Cloudflare Pages</span>
+wrangler pages deploy frontend/dist --project-name kinloei
+
+<span class="c"># ได้ URL เช่น: https://kinloei.pages.dev</span>
+<span class="c"># ผู้ใช้เปิดบน Chrome มือถือ → "เพิ่มในหน้าจอหลัก" → ติดตั้ง PWA ได้เลย</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- API SPEC -->
+<section id="api" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">API Reference</div>
+      <h2>FastAPI Endpoints</h2>
+      <p>เหมือนเดิมทุกอย่าง — PWA เรียกผ่าน <code>fetch()</code> แทน <code>dio</code> เท่านั้น</p>
+    </div>
+    <div class="reveal" style="overflow-x:auto">
+      <table class="apitable">
+        <thead>
+          <tr><th>Method</th><th>Endpoint</th><th>PWA ส่งอะไร</th><th>ได้คืน</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/health</code></td>
+            <td>—</td>
+            <td><code>{"status":"ok"}</code></td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><code>/analyze/scan</code></td>
+            <td>FormData: device_id, health_profile (JSON string), image (Blob จาก canvas.toBlob), text_input</td>
+            <td>scan_id + result: status, ingredients, flagged_ingredients, summary, disclaimer</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/analyze/history/{device_id}</code></td>
+            <td>device_id (path param)</td>
+            <td>array of scan history (backup จาก server)</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/profile/{device_id}</code></td>
+            <td>device_id</td>
+            <td>health_profile JSON</td>
+          </tr>
+          <tr>
+            <td><span class="method put">PUT</span></td>
+            <td><code>/profile/{device_id}</code></td>
+            <td>JSON body: conditions, allergies, avoid_ingredients</td>
+            <td>updated profile</td>
+          </tr>
+          <tr>
+            <td><span class="method del">DELETE</span></td>
+            <td><code>/profile/{device_id}</code></td>
+            <td>device_id</td>
+            <td>ลบข้อมูลทั้งหมด (PDPA compliance)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="warnbox reveal">
+      <div class="wi">🔒</div>
+      <div class="wt"><b>CORS:</b> FastAPI ตั้ง <code>ALLOWED_ORIGINS</code> ใน <code>.env</code> ให้ตรงกับ URL ของ Cloudflare Pages เช่น <code>https://kinloei.pages.dev</code> — ถ้าไม่ตั้ง browser จะ block request ทุกอัน</div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPLOY OPTIONS -->
+<section id="deploy">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Deployment Options</div>
+      <h2>เลือก Platform Deploy</h2>
+      <p>ทั้ง frontend และ backend มีตัวเลือก free tier ที่ใช้งานได้จริงสำหรับ MVP</p>
+    </div>
+
+    <div style="margin-bottom:28px">
+      <div style="font-family:'Bai Jamjuree';font-weight:600;font-size:17px;color:var(--pine);margin-bottom:14px">Frontend (Static PWA)</div>
+      <div class="deploy-grid reveal">
+        <div class="deploy-card rec">
+          <div class="rec-flag">แนะนำ</div>
+          <h4>Cloudflare Pages</h4>
+          <div class="free">ฟรีไม่จำกัด bandwidth</div>
+          <ul>
+            <li>HTTPS อัตโนมัติ</li>
+            <li>CDN ทั่วโลก — โหลดเร็ว</li>
+            <li>Deploy ง่ายด้วย <code>wrangler</code> CLI</li>
+            <li>Custom domain ฟรี</li>
+          </ul>
+        </div>
+        <div class="deploy-card">
+          <h4>Vercel</h4>
+          <div class="free">ฟรี (Hobby plan)</div>
+          <ul>
+            <li>HTTPS อัตโนมัติ</li>
+            <li>Deploy จาก GitHub push อัตโนมัติ</li>
+            <li>Preview URL ทุก commit</li>
+            <li>Bandwidth จำกัด 100GB/เดือน</li>
+          </ul>
+        </div>
+        <div class="deploy-card">
+          <h4>GitHub Pages</h4>
+          <div class="free">ฟรี</div>
+          <ul>
+            <li>Deploy จาก branch <code>gh-pages</code></li>
+            <li>ใช้ <code>gh-pages</code> npm package</li>
+            <li>ต้องตั้ง <code>base</code> ใน vite.config.js</li>
+            <li>ไม่รองรับ SPA routing โดยตรง</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:'Bai Jamjuree';font-weight:600;font-size:17px;color:var(--pine);margin-bottom:14px">Backend (FastAPI + PostgreSQL)</div>
+      <div class="deploy-grid reveal">
+        <div class="deploy-card rec">
+          <div class="rec-flag">แนะนำ</div>
+          <h4>Railway</h4>
+          <div class="free">$5 credit/เดือน (ฟรี)</div>
+          <ul>
+            <li>รัน Docker image โดยตรง ไม่แก้โค้ด</li>
+            <li>PostgreSQL plugin ในตัว</li>
+            <li>Env vars จัดการผ่าน dashboard</li>
+            <li>Auto HTTPS + custom domain</li>
+          </ul>
+        </div>
+        <div class="deploy-card">
+          <h4>Render</h4>
+          <div class="free">ฟรี (spin down หลัง 15 นาที)</div>
+          <ul>
+            <li>รัน Docker ได้</li>
+            <li>PostgreSQL ฟรี 90 วัน</li>
+            <li>Cold start ~30 วิ ถ้า spin down</li>
+            <li>เหมาะสำหรับ demo/นำเสนอ</li>
+          </ul>
+        </div>
+        <div class="deploy-card">
+          <h4>VPS / VM โรงเรียน</h4>
+          <div class="free">ถ้ามี server ว่าง</div>
+          <ul>
+            <li>รัน docker compose เหมือน local</li>
+            <li>ต้องตั้ง Nginx reverse proxy + SSL</li>
+            <li>ควบคุมได้เต็มที่ ไม่มี limit</li>
+            <li>ต้องดูแล server เอง</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHECKLIST -->
+<section id="checklist" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Go-Live Checklist</div>
+      <h2>Checklist ก่อน Launch</h2>
+      <p>ตรวจทุกข้อก่อน share URL ให้คนอื่น — PWA ไม่มี review แต่ต้องผ่าน criteria ของ browser</p>
+    </div>
+    <div class="two-col reveal">
+      <div>
+        <h3 style="font-size:17px;color:var(--pine);margin-bottom:16px">PWA Technical</h3>
+        <div class="checklist">
+          <div class="cli"><div class="cb"></div><span>Lighthouse PWA score ≥ 90 (Chrome DevTools)</span></div>
+          <div class="cli"><div class="cb"></div><span>manifest.json มี name, icons (192+512px), display:standalone</span></div>
+          <div class="cli"><div class="cb"></div><span>Service Worker registered และ cache assets แล้ว</span></div>
+          <div class="cli"><div class="cb"></div><span>เปิดหน้า Scan ได้แม้ network ช้ามาก (graceful degradation)</span></div>
+          <div class="cli"><div class="cb"></div><span>กล้องทำงานได้บน Chrome Android และ Safari iOS</span></div>
+          <div class="cli"><div class="cb"></div><span>VITE_API_URL ชี้ไป production backend (ไม่ใช่ localhost)</span></div>
+          <div class="cli"><div class="cb"></div><span>CORS backend อนุญาต domain ของ frontend</span></div>
+          <div class="cli"><div class="cb"></div><span>"Add to Home Screen" ทดสอบแล้วบน Android + iOS</span></div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:17px;color:var(--pine);margin-bottom:16px">Content & Legal</h3>
+        <div class="checklist">
+          <div class="cli"><div class="cb"></div><span>Medical disclaimer แสดงในหน้า Result ทุกครั้ง</span></div>
+          <div class="cli"><div class="cb"></div><span>Privacy Policy มีหน้าหรือ URL อ้างอิงได้</span></div>
+          <div class="cli"><div class="cb"></div><span>ปุ่มลบข้อมูลตัวเองได้ (PDPA)</span></div>
+          <div class="cli"><div class="cb"></div><span>ไม่มี API Key ฝังใน JS code (ตรวจด้วย View Source)</span></div>
+          <div class="cli"><div class="cb"></div><span>App icon และ splash screen สวยงาม</span></div>
+          <div class="cli"><div class="cb"></div><span>ทดสอบบน Chrome Android + Safari iOS ครบ</span></div>
+          <div class="cli"><div class="cb"></div><span>ทดสอบกับ network ช้า (Chrome Throttling: Slow 3G)</span></div>
+          <div class="cli"><div class="cb"></div><span>Share URL ให้ทีมและอาจารย์ทดสอบก่อน</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="infobox reveal" style="margin-top:32px">
+      <b>Lighthouse Check:</b> Chrome → F12 → Lighthouse tab → เลือก "Progressive Web App" + "Mobile" → Analyze — ดูว่า criteria ไหนยังไม่ผ่านและแก้ตามคำแนะนำ
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fg">
+      <div>
+        <h3>กินเลย · PWA Implementation Plan</h3>
+        <div class="ftag">Vite · FastAPI · Docker · Cloudflare Pages</div>
+      </div>
+      <div class="fright">
+        <b>ทีมสามหัวหมูตุ๋น</b><br>
+        นักศึกษา ปวส. สาขาเทคโนโลยีสารสนเทศ<br>
+        จังหวัดเลย
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="fine">อ้างอิงจาก กินเลย Blueprint Mark 2 · Vite 5 · vite-plugin-pwa 0.21 · idb 8 · FastAPI 0.115 · Gemini 2.0 Flash · ตรวจสอบ version ล่าสุดของ package ก่อนพัฒนาจริง</div>
+  </div>
+</footer>
+
+<script>
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } })
+}, { threshold: .1 })
+document.querySelectorAll('.reveal').forEach(el => io.observe(el))
+
+const links = [...document.querySelectorAll('.nav-links a')]
+const navIo = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id))
+    }
+  })
+}, { rootMargin: '-40% 0px -55% 0px' })
+document.querySelectorAll('section[id]').forEach(s => navIo.observe(s))
+</script>
+</body>
+</html>
