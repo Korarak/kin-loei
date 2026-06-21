@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#00c251">
+  <meta name="theme-color" content="#0077CC">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,8 +14,16 @@
   <title>กินเลย</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700;800&family=IBM+Plex+Sans+Thai:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- non-blocking font load — ไม่ block render -->
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@600;700;800&family=IBM+Plex+Sans+Thai:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap"
+    onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@600;700;800&family=IBM+Plex+Sans+Thai:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap">
+  </noscript>
   <link rel="stylesheet" href="/src/styles/main.css">
+  <!-- preconnect to backend API -->
+  <link rel="dns-prefetch" href="http://localhost:18000">
 </head>
 <body>
   <div id="app"></div>

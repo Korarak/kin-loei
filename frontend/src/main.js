@@ -1,35 +1,63 @@
 import './styles/main.css'
-import { renderProfile } from './pages/profile.js'
-import { renderScan }    from './pages/scan.js'
-import { renderResult }  from './pages/result.js'
-import { renderHistory } from './pages/history.js'
-import { stopCamera }    from './camera.js'
+import { stopCamera } from './camera.js'
 
+// lazy-load pages — โหลดเฉพาะหน้าที่ใช้จริง
 const routes = {
-  '#/profile': renderProfile,
-  '#/scan':    renderScan,
-  '#/result':  renderResult,
-  '#/history': renderHistory,
+  '#/scan':    () => import('./pages/scan.js').then(m => m.renderScan),
+  '#/result':  () => import('./pages/result.js').then(m => m.renderResult),
+  '#/history': () => import('./pages/history.js').then(m => m.renderHistory),
+  '#/profile': () => import('./pages/profile.js').then(m => m.renderProfile),
 }
+
+// prefetch หน้าที่น่าจะเปิดต่อไป
+const prefetchMap = {
+  '#/scan':    ['#/result'],
+  '#/result':  ['#/history', '#/scan'],
+  '#/history': ['#/scan'],
+  '#/profile': ['#/scan'],
+}
+
+const pageCache = new Map()
 
 const app  = document.getElementById('app')
 const tabs = document.querySelectorAll('.tab-btn')
 
 async function navigate() {
   const hash   = location.hash || '#/scan'
-  const render = routes[hash] ?? renderScan
+  const loader = routes[hash] ?? routes['#/scan']
 
   if (hash !== '#/scan') stopCamera()
 
-  app.innerHTML = ''
   tabs.forEach(t => t.classList.toggle('active', t.dataset.href === hash))
 
+  // ใช้ cache ถ้ามี
+  let render = pageCache.get(hash)
+  if (!render) {
+    render = await loader()
+    pageCache.set(hash, render)
+  }
+
+  app.innerHTML = ''
   await render(app)
   window.scrollTo(0, 0)
+
+  // prefetch หน้าถัดไปในพื้นหลัง
+  for (const next of (prefetchMap[hash] ?? [])) {
+    if (!pageCache.has(next) && routes[next]) {
+      routes[next]().then(fn => pageCache.set(next, fn)).catch(() => {})
+    }
+  }
 }
 
 window.addEventListener('hashchange', navigate)
 navigate()
+
+// ── SW update → reload อัตโนมัติ ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload()
+  })
+}
 
 // ── PWA install banner ──
 let deferredPrompt = null

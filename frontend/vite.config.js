@@ -10,8 +10,8 @@ export default defineConfig({
         name: 'กินเลย',
         short_name: 'กินเลย',
         description: 'ผู้ช่วยตรวจสอบความปลอดภัยของอาหาร สำหรับผู้มีโรคประจำตัวและแพ้อาหาร',
-        theme_color: '#15362a',
-        background_color: '#f6f3ea',
+        theme_color: '#0077CC',
+        background_color: '#F0F6FF',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
@@ -26,15 +26,32 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         runtimeCaching: [
+          // Google Fonts — cache ยาว 1 ปี
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com/,
             handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts', expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 } },
+            options: {
+              cacheName: 'google-fonts',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
           },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com/,
             handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts-files', expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 } },
+            options: {
+              cacheName: 'google-fonts-files',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+          // API health + history — StaleWhileRevalidate (เร็ว + อัปเดตพื้นหลัง)
+          {
+            urlPattern: ({ url }) =>
+              url.pathname === '/health' || url.pathname.startsWith('/analyze/history'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'api-read',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 10 },
+            },
           },
         ],
         skipWaiting: true,
@@ -42,4 +59,19 @@ export default defineConfig({
       },
     }),
   ],
+
+  build: {
+    target: ['es2020', 'chrome89', 'safari14'],
+    rollupOptions: {
+      output: {
+        // แยก chunk ตามหน้า — browser โหลดเฉพาะที่ต้องการ
+        manualChunks(id) {
+          if (id.includes('pages/scan'))    return 'page-scan'
+          if (id.includes('pages/result'))  return 'page-result'
+          if (id.includes('pages/history')) return 'page-history'
+          if (id.includes('pages/profile')) return 'page-profile'
+        },
+      },
+    },
+  },
 })

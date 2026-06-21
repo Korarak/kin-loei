@@ -66,9 +66,9 @@ export async function renderProfile(el) {
       </button>
 
       <!-- How it works -->
-      <div class="card" style="background:linear-gradient(135deg,var(--pine-3),var(--pine-2));border-color:rgba(0,194,81,.2)">
-        <div class="section-label" style="color:rgba(0,194,81,.7);margin-top:0">วิธีที่ระบบใช้ข้อมูลนี้</div>
-        <div style="display:flex;flex-direction:column;gap:12px;font-size:13.5px;font-weight:300;color:rgba(255,255,255,.65)">
+      <div class="card" style="background:linear-gradient(135deg,#EBF5FF,#DFF0FF);border:1.5px solid rgba(0,119,204,.14)">
+        <div class="section-label" style="color:#0055AA;margin-top:0">วิธีที่ระบบใช้ข้อมูลนี้</div>
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:13.5px;font-weight:400;color:#2A4A7A">
           <div style="display:flex;gap:10px;align-items:flex-start">
             <span style="font-size:18px;flex:none">📸</span>
             <span>เมื่อสแกนฉลาก ข้อมูลนี้จะถูกส่งให้ Gemini วิเคราะห์ว่าอาหารชิ้นนั้นเหมาะกับคุณหรือไม่</span>

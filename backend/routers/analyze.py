@@ -4,9 +4,12 @@ from sqlalchemy import select
 from pydantic import BaseModel
 import base64
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from core.database import get_db
-from core.gemini import analyze_food
+from core.gemini import analyze_food, search_product_info
 from core.models import User, Scan
 
 router = APIRouter(prefix="/analyze", tags=["analyze"])
@@ -79,6 +82,20 @@ async def scan_food(
         if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
             raise HTTPException(429, "Gemini API quota หมด — รอสักครู่แล้วลองใหม่")
         raise HTTPException(502, f"Gemini วิเคราะห์ไม่สำเร็จ: {msg}")
+
+    # second-pass: search for product info if name was extracted
+    if analysis.get("product_name"):
+        try:
+            search = await search_product_info(
+                product_name=analysis.get("product_name", ""),
+                brand=analysis.get("brand", ""),
+                product_type=analysis.get("product_type", ""),
+                ingredients=analysis.get("ingredients", []),
+            )
+            if search:
+                analysis["product_search"] = search
+        except Exception as e:
+            logger.warning("search_product_info failed (non-fatal): %s", str(e))
 
     # save scan history
     scan = Scan(
