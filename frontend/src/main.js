@@ -12,16 +12,16 @@ const routes = {
   '#/history': renderHistory,
 }
 
-const app = document.getElementById('app')
+const app  = document.getElementById('app')
 const tabs = document.querySelectorAll('.tab-btn')
 
 async function navigate() {
-  const hash = location.hash || '#/scan'
+  const hash   = location.hash || '#/scan'
+  const render = routes[hash] ?? renderScan
+
   if (hash !== '#/scan') stopCamera()
 
-  const render = routes[hash] ?? renderScan
   app.innerHTML = ''
-
   tabs.forEach(t => t.classList.toggle('active', t.dataset.href === hash))
 
   await render(app)
@@ -31,9 +31,9 @@ async function navigate() {
 window.addEventListener('hashchange', navigate)
 navigate()
 
-// PWA install banner
+// ── PWA install banner ──
 let deferredPrompt = null
-window.addEventListener('beforeinstallprompt', (e) => {
+window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault()
   deferredPrompt = e
   if (sessionStorage.getItem('kinloei_install_dismissed')) return
@@ -41,16 +41,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
   const banner = document.createElement('div')
   banner.className = 'install-banner'
   banner.innerHTML = `
+    <span class="ib-icon">📲</span>
     <div class="ib-text">
       <b>เพิ่ม กินเลย ในหน้าจอหลัก</b>
-      ใช้งานได้เร็วขึ้น เหมือนแอปจริง
+      ใช้ได้เหมือนแอปจริง · ไม่ต้องดาวน์โหลด
     </div>
-    <button class="ib-btn" id="install-ok">ติดตั้ง</button>
-    <button class="ib-close" id="install-no">✕</button>
+    <button class="ib-btn" id="ib-install">ติดตั้ง</button>
+    <button class="ib-close" id="ib-close" aria-label="ปิด">✕</button>
   `
   document.body.appendChild(banner)
 
-  banner.querySelector('#install-ok').addEventListener('click', async () => {
+  banner.querySelector('#ib-install').addEventListener('click', async () => {
     banner.remove()
     deferredPrompt?.prompt()
     const choice = await deferredPrompt?.userChoice
@@ -58,7 +59,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = null
   })
 
-  banner.querySelector('#install-no').addEventListener('click', () => {
+  banner.querySelector('#ib-close').addEventListener('click', () => {
     banner.remove()
     sessionStorage.setItem('kinloei_install_dismissed', '1')
   })

@@ -1,35 +1,98 @@
-services:
-  backend:
-    build: ./backend
-    container_name: kinloei-backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
-    restart: unless-stopped
+name: kinloei
 
+# ──────────────────────────────────────────────
+#  กินเลย — Full Stack
+#  Services (ตามลำดับ dependency):
+#   1. db        PostgreSQL 16
+#   2. backend   FastAPI + Uvicorn
+#   3. frontend  nginx เสิร์ฟ Vite PWA
+# ──────────────────────────────────────────────
+
+services:
+
+  # ── 1. Database ──────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: kinloei-db
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-kinloei}
-      POSTGRES_USER: ${POSTGRES_USER:-kinloei}
+      POSTGRES_DB:       ${POSTGRES_DB:-kinloei}
+      POSTGRES_USER:     ${POSTGRES_USER:-kinloei}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kinloei}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kinloei} -d ${POSTGRES_DB:-kinloei}"]
+      interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
+      start_period: 15s
+    labels:
+      com.kinloei.service: db
+      com.kinloei.description: "PostgreSQL 16 — scan history & user profiles"
 
+  # ── 2. Backend ───────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: ${APP_ENV:-dev}        # ใช้ target dev (reload) หรือ prod
+    container_name: kinloei-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # bind mount เฉพาะ dev — prod image copy code เข้าไปแล้ว
+      - ./backend:/app
+    networks:
+      - backend-net
+      - app-net
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    labels:
+      com.kinloei.service: backend
+      com.kinloei.description: "FastAPI + Gemini 2.5 Flash — food analysis API"
+
+  # ── 3. Frontend ──────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:${BACKEND_PORT:-18000}
+    container_name: kinloei-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - app-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    labels:
+      com.kinloei.service: frontend
+      com.kinloei.description: "Vite PWA เสิร์ฟผ่าน nginx"
+
+# ──────────────────────────────────────────────
 volumes:
   pg_data:
+    name: kinloei-pgdata
+
+networks:
+  backend-net:
+    name: kinloei-backend
+    internal: true          # db ไม่เปิด port ออก internet
+  app-net:
+    name: kinloei-app

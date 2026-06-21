@@ -3,35 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#15362a">
+  <meta name="theme-color" content="#00c251">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="กินเลย">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="description" content="ผู้ช่วยตรวจสอบความปลอดภัยของอาหาร สำหรับผู้มีโรคประจำตัวและแพ้อาหาร">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>กินเลย</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700;800&family=IBM+Plex+Sans+Thai:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
   <div id="app"></div>
+
   <nav id="bottom-nav" class="bottom-nav">
-    <a class="tab-btn" data-href="#/scan" href="#/scan">
-      <span class="tab-icon">📷</span>
+
+    <a class="tab-btn" data-href="#/scan" href="#/scan" aria-label="สแกน">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
       <span class="tab-label">สแกน</span>
     </a>
-    <a class="tab-btn" data-href="#/history" href="#/history">
-      <span class="tab-icon">📋</span>
+
+    <a class="tab-btn" data-href="#/history" href="#/history" aria-label="ประวัติ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
       <span class="tab-label">ประวัติ</span>
     </a>
-    <a class="tab-btn" data-href="#/profile" href="#/profile">
-      <span class="tab-icon">🧑‍⚕️</span>
+
+    <a class="tab-btn" data-href="#/profile" href="#/profile" aria-label="โปรไฟล์">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
       <span class="tab-label">โปรไฟล์</span>
     </a>
+
   </nav>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

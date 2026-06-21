@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4736"/>
+      <stop offset="100%" stop-color="#0f2a1e"/>
+    </linearGradient>
+    <linearGradient id="leaf-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5fbc7e"/>
+      <stop offset="100%" stop-color="#3f9d63"/>
+    </linearGradient>
+    <linearGradient id="bowl-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <!-- Subtle glow -->
+  <ellipse cx="256" cy="180" rx="180" ry="100" fill="#3f9d63" opacity="0.08"/>
+
+  <!-- Bowl body -->
+  <path d="M128 220 Q128 360 256 370 Q384 360 384 220 Z" fill="url(#bowl-g)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+  <!-- Bowl rim highlight -->
+  <ellipse cx="256" cy="220" rx="128" ry="22" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+  <!-- Steam lines -->
+  <path d="M200 196 Q196 178 202 162 Q208 146 204 130" fill="none" stroke="#7fa07f" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+  <path d="M256 190 Q252 172 258 156 Q264 140 260 124" fill="none" stroke="#7fa07f" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <path d="M312 196 Q308 178 314 162 Q320 146 316 130" fill="none" stroke="#7fa07f" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Check mark / leaf in bowl -->
+  <circle cx="256" cy="295" r="46" fill="url(#leaf-g)" opacity="0.95"/>
+  <path d="M234 295 L249 311 L279 280" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Bottom base line of bowl -->
+  <path d="M210 362 Q256 374 302 362" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Thai text กินเลย - represented as simple leaf ornament instead -->
+  <circle cx="256" cy="430" r="6" fill="#3f9d63" opacity="0.7"/>
+  <circle cx="238" cy="430" r="4" fill="#3f9d63" opacity="0.45"/>
+  <circle cx="274" cy="430" r="4" fill="#3f9d63" opacity="0.45"/>
+</svg>

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     secret_key: str
     allowed_origins: str = "http://localhost:3000"
 
+    # Admin dashboard credentials
+    admin_user: str = "admin"
+    admin_password: str = "changeme"
+
     @property
     def database_url(self) -> str:
         return (

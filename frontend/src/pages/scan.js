@@ -2,173 +2,222 @@ import { startCamera, stopCamera, captureFrame, fileToBlob, hasCameraSupport } f
 import { getProfile, getDeviceId, saveScan } from '../db.js'
 import { scanFood } from '../api.js'
 
-let _activeStream = null
-
 export async function renderScan(el) {
   stopCamera()
+  el.innerHTML = ''
 
-  el.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-title">สแกนอาหาร</h1>
-      <p class="page-sub">ถ่ายภาพฉลากหรืออาหาร Gemini จะวิเคราะห์ให้</p>
+  const wrap = document.createElement('div')
+  wrap.className = 'page-enter'
+  wrap.innerHTML = `
+    <!-- dark brand header -->
+    <div class="page-hero">
+      <div class="page-eyebrow">Gemini 2.5 Flash · AI</div>
+      <h1 class="page-title">สแกนฉลากอาหาร</h1>
+      <p class="page-sub">ถ่ายภาพฉลาก หรือพิมพ์รายการส่วนผสม</p>
     </div>
-    <div class="page" style="padding-top:14px">
-      <div id="cam-container">
-        <div class="camera-placeholder" id="cam-placeholder">
-          <div class="ph-icon">📷</div>
-          <p class="ph-text">แตะปุ่มด้านล่างเพื่อเปิดกล้อง</p>
-        </div>
-      </div>
 
+    <div class="page" style="padding-top:20px">
+
+      <!-- camera / preview area -->
+      <div id="cam-container"></div>
+
+      <!-- camera controls -->
       <div style="display:flex;gap:10px;margin-top:14px">
-        <button class="btn btn-primary" id="cam-btn" style="flex:1.5">
-          📷 เปิดกล้อง
+        <button class="btn btn-primary" id="cam-btn" style="flex:1.8">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          เปิดกล้อง
         </button>
-        <label class="btn btn-secondary" style="flex:1;margin-bottom:0" id="gallery-label">
-          🖼️ Gallery
-          <input type="file" id="gallery-input" accept="image/*" capture="environment" style="display:none">
+        <label class="btn btn-secondary" style="flex:1;cursor:pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          แกลเลอรี
+          <input type="file" id="gallery-input" accept="image/*" style="display:none">
         </label>
       </div>
 
+      <!-- text input -->
       <div class="card" style="margin-top:14px">
-        <div class="section-label">พิมพ์ชื่ออาหาร / ส่วนผสม (ไม่มีภาพก็ได้)</div>
-        <textarea id="text-input" placeholder="เช่น บะหมี่กึ่งสำเร็จรูปรสกุ้ง หรือ วางรายการส่วนผสมที่นี่..." style="min-height:72px"></textarea>
-        <button class="btn btn-gem" id="analyze-btn" style="margin-top:12px" disabled>
-          ✨ วิเคราะห์ด้วย Gemini
+        <div class="section-label" style="margin-top:0">หรือพิมพ์ชื่ออาหาร / ส่วนผสม</div>
+        <div class="field" style="margin-bottom:12px">
+          <textarea id="text-input"
+            placeholder="เช่น บะหมี่กึ่งสำเร็จรูปรสกุ้ง&#10;หรือวางรายการส่วนผสมทั้งหมด..."
+            style="min-height:76px"></textarea>
+        </div>
+        <button class="btn btn-gem" id="analyze-btn" disabled>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          วิเคราะห์ด้วย Gemini
         </button>
       </div>
+
+      <p style="text-align:center;font-size:12px;color:var(--ink-faint);margin-top:8px;font-weight:300">
+        ต้องการภาพ <b>หรือ</b> ข้อความอย่างใดอย่างหนึ่ง
+      </p>
     </div>
   `
+  el.appendChild(wrap)
 
-  const camBtn = el.querySelector('#cam-btn')
-  const camContainer = el.querySelector('#cam-container')
-  const analyzeBtn = el.querySelector('#analyze-btn')
-  const textInput = el.querySelector('#text-input')
-  const galleryInput = el.querySelector('#gallery-input')
+  const camContainer = wrap.querySelector('#cam-container')
+  const camBtn       = wrap.querySelector('#cam-btn')
+  const analyzeBtn   = wrap.querySelector('#analyze-btn')
+  const textInput    = wrap.querySelector('#text-input')
+  const galleryInput = wrap.querySelector('#gallery-input')
 
   let capturedBlob = null
-  let cameraOpen = false
+  let cameraOpen   = false
+
+  camContainer.appendChild(makePlaceholder())
 
   function updateAnalyzeBtn() {
     analyzeBtn.disabled = !capturedBlob && !textInput.value.trim()
   }
   textInput.addEventListener('input', updateAnalyzeBtn)
 
-  // camera
+  // ── camera ──
   camBtn.addEventListener('click', async () => {
     if (!hasCameraSupport()) {
-      alert('เบราว์เซอร์นี้ไม่รองรับกล้อง — ลองใช้ Chrome บน Android หรือ Safari บน iOS')
+      showToast('เบราว์เซอร์นี้ไม่รองรับกล้อง ลองใช้ Chrome', true)
       return
     }
     if (cameraOpen) {
-      // capture
-      const video = el.querySelector('video')
+      const video = wrap.querySelector('video')
       if (video) {
         capturedBlob = await captureFrame(video)
-        showPreview(capturedBlob, camContainer)
         stopCamera()
         cameraOpen = false
-        camBtn.innerHTML = '📷 ถ่ายใหม่'
+        showImagePreview(capturedBlob, camContainer)
+        camBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> ถ่ายใหม่`
         updateAnalyzeBtn()
       }
     } else {
-      // open
-      const wrap = document.createElement('div')
-      wrap.className = 'camera-wrap'
-      wrap.innerHTML = `
+      const cameraWrap = document.createElement('div')
+      cameraWrap.className = 'camera-wrap'
+      cameraWrap.innerHTML = `
         <video id="live-video" autoplay playsinline muted></video>
         <div class="cam-overlay"><div class="cam-frame"></div></div>
       `
       camContainer.innerHTML = ''
-      camContainer.appendChild(wrap)
-      const video = wrap.querySelector('video')
+      camContainer.appendChild(cameraWrap)
+      const video = cameraWrap.querySelector('video')
       try {
-        _activeStream = await startCamera(video)
-        cameraOpen = true
-        camBtn.innerHTML = '📸 ถ่ายภาพ'
+        await startCamera(video)
+        cameraOpen   = true
         capturedBlob = null
+        camBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> ถ่ายภาพ`
         updateAnalyzeBtn()
       } catch {
         camContainer.innerHTML = ''
         camContainer.appendChild(makePlaceholder())
-        alert('ไม่สามารถเปิดกล้องได้ — กรุณาอนุญาต permission กล้อง')
+        showToast('ไม่สามารถเปิดกล้องได้ — กรุณาอนุญาต permission', true)
       }
     }
   })
 
-  // gallery
+  // ── gallery ──
   galleryInput.addEventListener('change', async () => {
     const file = galleryInput.files?.[0]
     if (!file) return
     capturedBlob = await fileToBlob(file)
-    showPreview(capturedBlob, camContainer)
     stopCamera()
     cameraOpen = false
-    camBtn.innerHTML = '📷 เปิดกล้อง'
+    showImagePreview(capturedBlob, camContainer)
+    camBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> เปิดกล้อง`
     updateAnalyzeBtn()
   })
 
-  // analyze
+  // ── analyze ──
   analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true
-    showLoading('Gemini กำลังวิเคราะห์...')
-
+    const dismiss = showLoadingSteps()
     try {
-      const profile = await getProfile()
+      const profile  = await getProfile()
       const deviceId = getDeviceId()
-      const text = textInput.value.trim() || null
-      const data = await scanFood({ deviceId, profile, imageBlob: capturedBlob, text })
-
-      await saveScan({
-        scan_id: data.scan_id,
-        ...data.result,
-      })
-
+      const text     = textInput.value.trim() || null
+      const data     = await scanFood({ deviceId, profile, imageBlob: capturedBlob, text })
+      await saveScan({ scan_id: data.scan_id, ...data.result })
       sessionStorage.setItem('kinloei_last_result', JSON.stringify(data.result))
-      hideLoading()
+      dismiss()
       location.hash = '#/result'
     } catch (err) {
-      hideLoading()
+      dismiss()
       analyzeBtn.disabled = false
-      showError(err.message)
+      showToast('⚠️ ' + err.message, true)
     }
   })
 }
 
+// ── helpers ──
 function makePlaceholder() {
-  const el = document.createElement('div')
-  el.className = 'camera-placeholder'
-  el.innerHTML = `<div class="ph-icon">📷</div><p class="ph-text">แตะปุ่มด้านล่างเพื่อเปิดกล้อง</p>`
-  return el
+  const d = document.createElement('div')
+  d.className = 'camera-placeholder'
+  d.innerHTML = `
+    <div class="ph-icon">📷</div>
+    <p class="ph-text">แตะปุ่มด้านล่างเพื่อเปิดกล้อง</p>
+  `
+  return d
 }
 
-function showPreview(blob, container) {
-  const url = URL.createObjectURL(blob)
+function showImagePreview(blob, container) {
+  const url    = URL.createObjectURL(blob)
+  const sizeKB = Math.round(blob.size / 1024)
   container.innerHTML = `
-    <img src="${url}" style="width:100%;border-radius:18px;display:block;max-height:55dvh;object-fit:cover" alt="preview">
+    <div class="preview-wrap">
+      <img src="${url}" alt="preview">
+      <span class="preview-badge">✓ ${sizeKB} KB</span>
+    </div>
   `
 }
 
-function showLoading(msg) {
-  const el = document.createElement('div')
-  el.className = 'loading-overlay'
-  el.id = 'global-loading'
-  el.innerHTML = `<div class="spinner"></div><p class="loading-text">${msg}</p>`
-  document.body.appendChild(el)
+const STEPS = [
+  'กำลังอ่านภาพ...',
+  'สกัดรายการส่วนผสม...',
+  'ตรวจสอบกับโปรไฟล์สุขภาพ...',
+  'สรุปผลการวิเคราะห์...',
+]
+
+function showLoadingSteps() {
+  const overlay = document.createElement('div')
+  overlay.className = 'loading-overlay'
+  overlay.id = 'global-loading'
+
+  overlay.innerHTML = `
+    <div class="spinner"></div>
+    <div class="loading-steps">
+      ${STEPS.map((s, i) => `
+        <div class="loading-step" id="lstep-${i}" style="animation-delay:${i * .6}s">
+          <span class="step-dot"></span>${s}
+        </div>
+      `).join('')}
+    </div>
+  `
+  document.body.appendChild(overlay)
+
+  let idx = 0
+  const tick = () => {
+    const el = overlay.querySelector(`#lstep-${idx}`)
+    if (el) el.classList.add('active')
+    if (idx > 0) {
+      const prev = overlay.querySelector(`#lstep-${idx - 1}`)
+      if (prev) { prev.classList.remove('active'); prev.classList.add('done') }
+    }
+    idx++
+    if (idx < STEPS.length) setTimeout(tick, 1800)
+  }
+  tick()
+
+  return () => overlay.remove()
 }
 
-function hideLoading() {
-  document.getElementById('global-loading')?.remove()
-}
-
-function showError(msg) {
+function showToast(msg, isError = false) {
   const t = document.createElement('div')
-  t.style.cssText = `
-    position:fixed;bottom:calc(var(--nav-h)+16px);left:10px;right:10px;z-index:300;
-    background:var(--avoid);color:#fff;padding:13px 18px;border-radius:14px;
-    font-size:14px;font-weight:300;animation:slideUp .25s ease;
-  `
-  t.textContent = '⚠️ ' + msg
+  t.className = 'toast' + (isError ? ' error' : '')
+  t.textContent = msg
   document.body.appendChild(t)
-  setTimeout(() => t.remove(), 4000)
+  setTimeout(() => t.remove(), isError ? 4000 : 2200)
 }

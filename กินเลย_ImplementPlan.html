@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -204,7 +204,9 @@ footer .fine{font-size:12px;color:#8fa791;font-weight:300}
       <a href="#screens">Screens</a>
       <a href="#phase1">Phase 1</a>
       <a href="#phase2">Phase 2</a>
+      <a href="#phase25" style="color:var(--safe);font-weight:500">Phase 2.5 · Auth ✦</a>
       <a href="#phase3">Phase 3</a>
+      <a href="#phase4" style="color:var(--gem);font-weight:500">Phase 4 · Admin ✦</a>
       <a href="#api">API</a>
       <a href="#deploy">Deploy</a>
       <a href="#checklist">Checklist</a>
@@ -750,6 +752,145 @@ ngrok http 5173
   </div>
 </section>
 
+<!-- PHASE 2.5 — AUTH + USER MANAGEMENT -->
+<section id="phase25" style="background:var(--paper-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Phase 2.5 · Auth &amp; User Management ✅ Done</div>
+      <h2>ระบบ Auth + จัดการ User</h2>
+      <p>User registration/login ด้วย JWT · Admin dashboard API · Gemini model fallback chain</p>
+    </div>
+    <div class="phases">
+
+      <!-- 2.5.1 Gemini Model Chain -->
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 2.5.1</div>
+          <div class="phase-title-sm">Gemini Fallback</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Model Fallback Chain — ตามสูตร TS OCR</h3>
+          <p class="desc">ลอง model ตามลำดับ — skip ไป model ถัดไปเฉพาะ 429/quota/5xx เท่านั้น</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">python</span><span class="cb-file">backend/core/gemini.py</span></div>
+            <pre><span class="k">MODELS</span> = [
+    <span class="s">"gemini-3-flash-preview"</span>,        <span class="c"># เน้นตัวนี้ก่อน</span>
+    <span class="s">"gemini-2.5-flash-preview-05-20"</span>,
+    <span class="s">"gemini-2.5-flash-preview"</span>,
+    <span class="s">"gemini-2.0-flash"</span>,
+    <span class="s">"gemini-1.5-flash"</span>,
+]
+
+<span class="k">for</span> model_name <span class="k">in</span> MODELS:
+    <span class="k">try</span>:
+        response = <span class="k">await</span> client.aio.models.generate_content(model=model_name, ...)
+        <span class="k">return</span> json.loads(response.text)
+    <span class="k">except</span> Exception <span class="k">as</span> e:
+        <span class="k">if</span> _is_retryable(e): <span class="k">continue</span>  <span class="c"># quota → next model</span>
+        <span class="k">break</span>                              <span class="c"># auth/bad-req → stop</span></pre>
+          </div>
+          <div class="infobox">
+            <b>SYSTEM_PROMPT style:</b> ขึ้นต้นด้วย "ตอบเป็น JSON เท่านั้น ห้ามมี markdown" · ระบุทุก field ชัดเจนพร้อม JSON key · กฎสุดท้าย: <b>โรคประจำตัวมีผลโดยตรงต่อ status</b> เช่น เบาหวาน + น้ำตาลสูง → AVOID
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.5.2 User Auth -->
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 2.5.2</div>
+          <div class="phase-title-sm">User Auth API</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>JWT Auth — Register / Login / Me</h3>
+          <p class="desc">User สมัครบัญชีด้วย email+password · link กับ device_id เดิมได้ · token อายุ 7 วัน</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">python</span><span class="cb-file">backend/core/auth.py</span></div>
+            <pre><span class="k">from</span> jose <span class="k">import</span> jwt
+<span class="k">from</span> passlib.context <span class="k">import</span> CryptContext
+
+pwd_context = CryptContext(schemes=[<span class="s">"bcrypt"</span>], deprecated=<span class="s">"auto"</span>)
+
+<span class="c"># ⚠️ requirements.txt ต้องมี bcrypt==4.0.1 (pin ไว้)</span>
+<span class="c"># passlib 1.7.4 ไม่เข้ากันกับ bcrypt 4.x+</span>
+
+<span class="k">def</span> create_token(sub, role=<span class="s">"user"</span>, hours=168):  <span class="c"># 7 วัน</span>
+    payload = {<span class="s">"sub"</span>: sub, <span class="s">"role"</span>: role, <span class="s">"exp"</span>: datetime.utcnow() + timedelta(hours=hours)}
+    <span class="k">return</span> jwt.encode(payload, settings.secret_key, algorithm=<span class="s">"HS256"</span>)</pre>
+          </div>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">http</span><span class="cb-file">Auth Endpoints</span></div>
+            <pre>POST /auth/register   {email, password, display_name?, device_id?}
+POST /auth/login      {email, password}
+GET  /auth/me         Bearer token → user info
+PUT  /auth/me/display-name
+PUT  /auth/me/password  {current_password, new_password}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.5.3 Admin API -->
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 2.5.3</div>
+          <div class="phase-title-sm">Admin API</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Admin User Management</h3>
+          <p class="desc">Admin login ด้วย env credentials (ADMIN_USER/ADMIN_PASSWORD) → JWT role="admin" อายุ 8 ชม.</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">env</span><span class="cb-file">.env</span></div>
+            <pre>ADMIN_USER=admin
+ADMIN_PASSWORD=kinloei_admin_2026</pre>
+          </div>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">http</span><span class="cb-file">Admin Endpoints</span></div>
+            <pre>POST   /admin/login
+GET    /admin/users?page=1&amp;size=20&amp;search=
+GET    /admin/users/{id}          <span class="c"># + health_profile + recent_scans</span>
+PUT    /admin/users/{id}          <span class="c"># email, display_name, role</span>
+PUT    /admin/users/{id}/toggle-active
+DELETE /admin/users/{id}
+GET    /admin/stats               <span class="c"># users total/registered, scans SAFE/CAUTION/AVOID</span>
+GET    /admin/scans?page=1&amp;status=SAFE</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.5.4 DB Migration -->
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 2.5.4</div>
+          <div class="phase-title-sm">DB Migration</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>User Model — Auth Fields เพิ่มเติม</h3>
+          <p class="desc">migration รันอัตโนมัติตอน startup ด้วย <code>ALTER TABLE ADD COLUMN IF NOT EXISTS</code> — ไม่ทำลายข้อมูลเดิม</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">python</span><span class="cb-file">backend/core/models.py — User</span></div>
+            <pre><span class="c"># เดิม</span>
+device_id: str      <span class="c"># anonymous session ID</span>
+health_profile: dict
+
+<span class="c"># เพิ่มใหม่ (nullable — backward compatible)</span>
+email: str | None
+password_hash: str | None
+display_name: str | None
+role: str           <span class="c"># "user" | "admin"</span>
+is_active: bool
+last_login_at: datetime | None</pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- PHASE 3 -->
 <section id="phase3">
   <div class="wrap">
@@ -848,6 +989,500 @@ wrangler pages deploy frontend/dist --project-name kinloei
   </div>
 </section>
 
+<!-- PHASE 4 — ADMIN DASHBOARD -->
+<section id="phase4">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Phase 4 · NEW · Admin Dashboard</div>
+      <h2>ระบบจัดการ Admin</h2>
+      <p>Vite + <strong>Tailwind CSS</strong> + Alpine.js — back-office สำหรับดูสถิติ จัดการ scans, users, ingredient rules และ monitor Gemini API usage</p>
+    </div>
+
+    <div class="infobox reveal">
+      <b>ทำไมถึงแยก Tailwind ไว้ที่ Admin และไม่ใช้กับ PWA?</b><br>
+      PWA (mobile-first) ต้องการ bundle เล็กที่สุด — Tailwind ที่ purge แล้วยังหนักกว่า custom CSS 3–5 KB และทำให้ class ใน HTML ยาวมากบนมือถือ<br>
+      Admin Dashboard (desktop-first) เน้น <em>ความเร็วในการพัฒนา</em> ไม่ใช่ bundle size — Tailwind สร้าง table, sidebar, responsive grid ได้เร็วกว่า custom CSS หลายเท่า และทำงานร่วมกับ Alpine.js ได้โดยตรง
+    </div>
+
+    <!-- Admin Tech Stack -->
+    <div class="sec-head reveal" style="margin-bottom:20px">
+      <div class="eyebrow">Admin Tech Stack</div>
+      <h3 style="font-size:20px;color:var(--pine)">เครื่องมือที่เพิ่มเข้ามาสำหรับ Admin</h3>
+    </div>
+    <div class="stack-grid reveal" style="margin-bottom:40px">
+      <div class="scard">
+        <div class="sico">🎨</div>
+        <div class="sname">Tailwind CSS</div>
+        <div class="sver">v3.4</div>
+        <div class="sdesc">Utility-first — สร้าง table/sidebar/card/badge ได้เร็ว ไม่ต้องเขียน CSS เพิ่ม responsive ในตัว dark mode พร้อม</div>
+      </div>
+      <div class="scard">
+        <div class="sico">🏔️</div>
+        <div class="sname">Alpine.js</div>
+        <div class="sver">3.x</div>
+        <div class="sdesc">Reactivity แบบ zero-build — <code>x-data, x-show, x-for</code> ใน HTML ตรงๆ เหมาะกับ admin table/modal/tab ไม่ต้อง React/Vue</div>
+      </div>
+      <div class="scard">
+        <div class="sico">🔐</div>
+        <div class="sname">JWT Auth</div>
+        <div class="sver">python-jose</div>
+        <div class="sdesc">Login username/password (ADMIN_USER, ADMIN_PASSWORD จาก .env) → FastAPI ออก JWT → เก็บใน localStorage → ส่ง <code>Authorization: Bearer</code> ทุก request</div>
+      </div>
+      <div class="scard">
+        <div class="sico">📊</div>
+        <div class="sname">Chart.js</div>
+        <div class="sver">4.x</div>
+        <div class="sdesc">กราฟสถิติ — Bar chart daily scans 7 วัน, Doughnut chart สัดส่วน SAFE/CAUTION/AVOID เรียบง่ายไม่ต้อง D3</div>
+      </div>
+      <div class="scard">
+        <div class="sico">🐳</div>
+        <div class="sname">Admin Docker Service</div>
+        <div class="sver">nginx:1.27-alpine</div>
+        <div class="sdesc">เพิ่ม service <code>admin</code> ใน docker-compose.yml เดิม — port 18081, depends_on backend, nginx เสิร์ฟ static files เดียวกับ pattern ของ frontend</div>
+      </div>
+      <div class="scard">
+        <div class="sico">🛡️</div>
+        <div class="sname">FastAPI Admin Router</div>
+        <div class="sver">routers/admin.py</div>
+        <div class="sdesc">เพิ่ม router ใหม่ใน backend เดิม — <code>/admin/*</code> ทุก endpoint ผ่าน <code>Depends(verify_admin_token)</code> ไม่มี public access</div>
+      </div>
+    </div>
+
+    <!-- Admin Screens -->
+    <div class="sec-head reveal" style="margin-bottom:20px">
+      <div class="eyebrow">Admin UI · 6 Pages</div>
+      <h3 style="font-size:20px;color:var(--pine)">6 หน้าของ Admin Dashboard</h3>
+    </div>
+    <div class="screens reveal" style="grid-template-columns:repeat(3,1fr);min-height:0">
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">🔐 Login</div>
+        <div class="s-icon">🛡️</div>
+        <div class="s-el">Username · ADMIN_USER</div>
+        <div class="s-el">Password · ADMIN_PASSWORD</div>
+        <div class="s-btn">POST /admin/auth/login → JWT</div>
+        <div class="s-desc" style="margin-top:6px">Token เก็บใน localStorage<br>Redirect → Dashboard</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">📊 Dashboard</div>
+        <div class="s-icon">📈</div>
+        <div class="s-el">Scans วันนี้ · 47</div>
+        <div class="s-el">Devices ทั้งหมด · 312</div>
+        <div class="s-el" style="font-size:10px">🟢 68% · 🟡 20% · 🔴 12%</div>
+        <div class="result-safe">Chart.js · 7-day bar graph</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">🔍 Scans</div>
+        <div class="s-icon">📋</div>
+        <div class="s-el">Filter: Status | Date | Device</div>
+        <div class="s-el" style="font-size:10px">บะหมี่กึ่งฯ · AVOID · 2h ago</div>
+        <div class="s-el" style="font-size:10px">ข้าวกล่อง · SAFE · 5h ago</div>
+        <div class="s-btn" style="background:#9a3a28">🗑️ ลบที่เลือก / Export CSV</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">👥 Devices</div>
+        <div class="s-icon">📱</div>
+        <div class="s-el">abc123… · 47 scans · active</div>
+        <div class="s-el">xyz789… · 12 scans · 3d ago</div>
+        <div class="s-el" style="font-size:10px">โปรไฟล์: เบาหวาน, แพ้กุ้ง</div>
+        <div class="s-btn" style="background:#8a6516">ดูโปรไฟล์ | ลบ (PDPA)</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">⚠️ Ingredient Rules</div>
+        <div class="s-icon">🧪</div>
+        <div class="s-el">โมโนโซเดียมกลูตาเมต → CAUTION</div>
+        <div class="s-el">แอสปาร์แตม → AVOID (high)</div>
+        <div class="s-el">ซูคราโลส → CAUTION (medium)</div>
+        <div class="s-btn">+ เพิ่มกฎ Override Gemini</div>
+      </div>
+      <div class="screen">
+        <div class="s-bar"></div>
+        <div class="s-title">⚙️ System Monitor</div>
+        <div class="s-icon">🩺</div>
+        <div class="result-safe">Backend ✓ Healthy · DB 12ms</div>
+        <div class="s-el">Gemini calls วันนี้: 234</div>
+        <div class="s-el">Gemini avg latency: 2.3s</div>
+        <div class="s-el" style="font-size:10px">Error rate: 0.4% (last 24h)</div>
+      </div>
+    </div>
+
+    <!-- Project Structure -->
+    <div class="sec-head reveal" style="margin-top:40px;margin-bottom:20px">
+      <div class="eyebrow">Admin Project Structure</div>
+      <h3 style="font-size:20px;color:var(--pine)">โครงสร้างโปรเจก Admin</h3>
+    </div>
+    <div class="two-col reveal">
+      <div>
+        <div style="font-family:'Bai Jamjuree';font-weight:600;font-size:16px;color:var(--pine);margin-bottom:10px">Admin Frontend — Tailwind + Alpine</div>
+        <div class="filetree">
+<span class="d">admin/</span>
+├── <span class="fg">Dockerfile</span>          <span class="c"># node build → nginx serve</span>
+├── <span class="fg">package.json</span>
+├── <span class="fg">vite.config.js</span>
+├── <span class="fg">tailwind.config.js</span>
+├── <span class="fg">index.html</span>         <span class="c"># SPA entry (Alpine CDN or bundle)</span>
+└── <span class="d">src/</span>
+    ├── <span class="fg">main.js</span>           <span class="c"># router + auth guard</span>
+    ├── <span class="fg">api.js</span>            <span class="c"># fetch /admin/* endpoints</span>
+    ├── <span class="fg">auth.js</span>           <span class="c"># JWT localStorage helper</span>
+    ├── <span class="d">components/</span>
+    │   ├── <span class="fc">sidebar.js</span>    <span class="c"># nav sidebar</span>
+    │   ├── <span class="fc">topbar.js</span>     <span class="c"># header + logout</span>
+    │   └── <span class="fc">table.js</span>      <span class="c"># reusable data table</span>
+    ├── <span class="d">pages/</span>
+    │   ├── <span class="fc">login.js</span>
+    │   ├── <span class="fc">dashboard.js</span>  <span class="c"># stats + Chart.js</span>
+    │   ├── <span class="fc">scans.js</span>      <span class="c"># paginated table + filter</span>
+    │   ├── <span class="fc">devices.js</span>    <span class="c"># user management</span>
+    │   ├── <span class="fc">rules.js</span>      <span class="c"># ingredient override rules</span>
+    │   └── <span class="fc">monitor.js</span>    <span class="c"># system health</span>
+    └── <span class="d">styles/</span>
+        └── <span class="fg">main.css</span>      <span class="c"># @tailwind directives</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Bai Jamjuree';font-weight:600;font-size:16px;color:var(--pine);margin-bottom:10px">Backend เพิ่มใหม่ — routers/admin.py</div>
+        <div class="filetree">
+<span class="d">backend/</span>
+└── <span class="d">routers/</span>
+    ├── <span class="fg">analyze.py</span>       <span class="c"># เดิม</span>
+    ├── <span class="fg">profile.py</span>       <span class="c"># เดิม</span>
+    └── <span class="fc">admin.py</span>         <span class="c"># ✦ ใหม่</span>
+
+<span class="d">backend/core/</span>
+├── <span class="fg">config.py</span>
+│   <span class="c"># เพิ่ม: admin_user, admin_password</span>
+└── <span class="fc">admin_auth.py</span>    <span class="c"># ✦ ใหม่</span>
+    <span class="c"># create_access_token()</span>
+    <span class="c"># verify_admin_token() → Depends</span>
+
+<span class="d">db (PostgreSQL) — ตาราง​ใหม่:</span>
+<span class="fc">ingredient_rules</span>
+  id, name, severity, reason
+  is_active, created_at
+        </div>
+        <div class="warnbox" style="margin-top:12px">
+          <div class="wi">🔒</div>
+          <div class="wt"><b>Admin port ไม่ expose ออก internet:</b> ในการ deploy จริง Admin port 18081 ควรอยู่หลัง VPN หรือ IP whitelist เท่านั้น ไม่ควร public เหมือน frontend</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New API Endpoints -->
+    <div class="sec-head reveal" style="margin-top:40px;margin-bottom:16px">
+      <div class="eyebrow">New Admin Endpoints</div>
+      <h3 style="font-size:20px;color:var(--pine)">Backend API เพิ่มสำหรับ Admin</h3>
+    </div>
+    <div class="reveal" style="overflow-x:auto">
+      <table class="apitable">
+        <thead>
+          <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>หน้าที่</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><code>/admin/auth/login</code></td>
+            <td>❌ Public</td>
+            <td>รับ username/password → คืน JWT access_token</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/stats</code></td>
+            <td>🔐 JWT</td>
+            <td>Total scans, devices, today count, status breakdown, 7-day chart data</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/scans?page=&status=&device=&date=</code></td>
+            <td>🔐 JWT</td>
+            <td>Paginated scan list พร้อม filter</td>
+          </tr>
+          <tr>
+            <td><span class="method del">DELETE</span></td>
+            <td><code>/admin/scans/{scan_id}</code></td>
+            <td>🔐 JWT</td>
+            <td>ลบ scan record เดี่ยว</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/devices</code></td>
+            <td>🔐 JWT</td>
+            <td>List ทุก device_id พร้อม scan count และ last active</td>
+          </tr>
+          <tr>
+            <td><span class="method del">DELETE</span></td>
+            <td><code>/admin/devices/{device_id}</code></td>
+            <td>🔐 JWT</td>
+            <td>ลบข้อมูลทั้งหมดของ device (scans + profile) — PDPA admin tool</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/rules</code></td>
+            <td>🔐 JWT</td>
+            <td>Ingredient override rules ทั้งหมด</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><code>/admin/rules</code></td>
+            <td>🔐 JWT</td>
+            <td>เพิ่มกฎใหม่ {name, severity, reason}</td>
+          </tr>
+          <tr>
+            <td><span class="method del">DELETE</span></td>
+            <td><code>/admin/rules/{rule_id}</code></td>
+            <td>🔐 JWT</td>
+            <td>ลบกฎ</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/monitor</code></td>
+            <td>🔐 JWT</td>
+            <td>DB latency, Gemini call count วันนี้, avg response time, error rate</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/export/scans.csv</code></td>
+            <td>🔐 JWT</td>
+            <td>Download scan history ทั้งหมดเป็น CSV</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Docker addition -->
+    <div class="sec-head reveal" style="margin-top:40px;margin-bottom:16px">
+      <div class="eyebrow">Docker Compose · เพิ่ม Admin Service</div>
+      <h3 style="font-size:20px;color:var(--pine)">เพิ่มใน docker-compose.yml</h3>
+    </div>
+    <div class="codeblock reveal">
+      <div class="cb-head"><span class="cb-lang">yaml</span><span class="cb-file">docker-compose.yml — เพิ่ม service admin</span></div>
+      <pre>  <span class="c"># ── 4. Admin Dashboard ──────────────────────────</span>
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: kinloei-admin
+    restart: unless-stopped
+    ports:
+      - <span class="s">"${ADMIN_PORT:-18081}:80"</span>
+    networks:
+      - app-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    labels:
+      com.kinloei.service: admin
+      com.kinloei.description: <span class="s">"Admin Dashboard — Vite + Tailwind CSS"</span></pre>
+    </div>
+    <div class="codeblock reveal">
+      <div class="cb-head"><span class="cb-lang">env</span><span class="cb-file">.env — เพิ่ม admin credentials</span></div>
+      <pre><span class="c"># Admin Dashboard</span>
+ADMIN_USER=admin
+ADMIN_PASSWORD=change_me_strong_admin_password
+ADMIN_JWT_SECRET=change_me_random_jwt_secret_32chars
+ADMIN_PORT=18081</pre>
+    </div>
+
+    <!-- Phase Steps -->
+    <div class="sec-head reveal" style="margin-top:40px;margin-bottom:20px">
+      <div class="eyebrow">Implementation Steps</div>
+      <h3 style="font-size:20px;color:var(--pine)">ขั้นตอนการพัฒนา Phase 4</h3>
+    </div>
+    <div class="phases">
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 4.1</div>
+          <div class="phase-title-sm">Setup Vite + Tailwind</div>
+          <div class="phase-dur">~1 ชั่วโมง</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Init admin project + Tailwind config</h3>
+          <p class="desc">สร้าง admin/ folder ติดตั้ง Vite + Tailwind CSS + Alpine.js พร้อม layout หลัก sidebar + topbar</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">terminal</span></div>
+            <pre"><span class="c"># สร้าง admin project</span>
+npm create vite@latest admin -- --template vanilla
+cd admin
+
+<span class="c"># ติดตั้ง dependencies</span>
+npm install
+npm install -D tailwindcss postcss autoprefixer
+npm install alpinejs chart.js
+npx tailwindcss init -p</pre>
+          </div>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">js</span><span class="cb-file">tailwind.config.js</span></div>
+            <pre">/** @type {import('tailwindcss').Config} */
+<span class="k">export default</span> {
+  content: [<span class="s">'./index.html'</span>, <span class="s">'./src/**/*.{js,html}'</span>],
+  theme: {
+    extend: {
+      colors: {
+        pine: { DEFAULT: <span class="s">'#0d2418'</span>, light: <span class="s">'#1b4a2c'</span> },
+        leaf: <span class="s">'#00c251'</span>,
+      }
+    }
+  },
+  plugins: [],
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 4.2</div>
+          <div class="phase-title-sm">JWT Auth</div>
+          <div class="phase-dur">~4 ชั่วโมง</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Login + JWT + Auth Guard</h3>
+          <p class="desc">Backend สร้าง <code>routers/admin.py</code> และ <code>core/admin_auth.py</code> — Frontend login form + ดัก route ที่ยังไม่ login</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">python</span><span class="cb-file">backend/core/admin_auth.py</span></div>
+            <pre"><span class="k">from</span> jose <span class="k">import</span> jwt
+<span class="k">from</span> fastapi <span class="k">import</span> HTTPException, Depends
+<span class="k">from</span> fastapi.security <span class="k">import</span> HTTPBearer
+
+<span class="k">def</span> create_admin_token(settings) -> str:
+    <span class="k">return</span> jwt.encode(
+        {<span class="s">"sub"</span>: <span class="s">"admin"</span>, <span class="s">"exp"</span>: datetime.utcnow() + timedelta(hours=<span class="n">8</span>)},
+        settings.admin_jwt_secret, algorithm=<span class="s">"HS256"</span>
+    )
+
+security = HTTPBearer()
+
+<span class="k">async def</span> verify_admin_token(
+    credentials = Depends(security),
+    settings: Settings = Depends(get_settings)
+):
+    <span class="k">try</span>:
+        jwt.decode(credentials.credentials, settings.admin_jwt_secret, [<span class="s">"HS256"</span>])
+    <span class="k">except</span>:
+        <span class="k">raise</span> HTTPException(<span class="n">401</span>, <span class="s">"Invalid admin token"</span>)</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 4.3</div>
+          <div class="phase-title-sm">Dashboard + Charts</div>
+          <div class="phase-dur">~1 วัน</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Stat cards + Chart.js กราฟ 7 วัน</h3>
+          <p class="desc">หน้า dashboard แสดง stat cards (total/today/safe/avoid) และ Bar chart daily scans + Doughnut status breakdown</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">html</span><span class="cb-file">stat card — Tailwind example</span></div>
+            <pre">&lt;div class=<span class="s">"grid grid-cols-4 gap-4 mb-6"</span>&gt;
+  &lt;div class=<span class="s">"bg-white rounded-2xl p-5 shadow-sm border border-gray-100"</span>&gt;
+    &lt;p class=<span class="s">"text-xs text-gray-400 uppercase tracking-wider"</span>&gt;Scans วันนี้&lt;/p&gt;
+    &lt;p class=<span class="s">"text-4xl font-bold text-pine mt-1"</span>
+       x-text=<span class="s">"stats.today"</span>&gt;&lt;/p&gt;
+  &lt;/div&gt;
+  <span class="c">&lt;!-- ... --&gt;</span>
+&lt;/div&gt;</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 4.4</div>
+          <div class="phase-title-sm">Scans + Devices Table</div>
+          <div class="phase-dur">~2 วัน</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Paginated table พร้อม filter + delete</h3>
+          <p class="desc">Tailwind table component ที่ reusable — แสดงข้อมูล Scans และ Devices พร้อม filter (status/date/device), pagination, multi-select delete, Export CSV</p>
+          <div class="chips">
+            <span class="chip">Alpine.js x-for</span>
+            <span class="chip">Pagination</span>
+            <span class="chip gem">Filter by status</span>
+            <span class="chip warn">Export CSV</span>
+            <span class="chip safe">PDPA delete</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 4.5</div>
+          <div class="phase-title-sm">Ingredient Rules</div>
+          <div class="phase-dur">~1 วัน</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>จัดการกฎ Custom Override Gemini</h3>
+          <p class="desc">ตาราง <code>ingredient_rules</code> ใน PostgreSQL — Admin เพิ่ม/ลบกฎได้ เช่น "แอสปาร์แตม → AVOID (high)" โดย backend จะ inject กฎเหล่านี้เข้า Gemini prompt อัตโนมัติ</p>
+          <div class="codeblock">
+            <div class="cb-head"><span class="cb-lang">sql</span><span class="cb-file">migration — ingredient_rules table</span></div>
+            <pre">CREATE TABLE ingredient_rules (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(200) NOT NULL,  <span class="c">-- ชื่อส่วนผสม</span>
+  severity   VARCHAR(10) NOT NULL,   <span class="c">-- high | medium | low</span>
+  reason     TEXT,
+  is_active  BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-block active reveal">
+        <div class="phase-num">
+          <div class="phase-tag">Step 4.6</div>
+          <div class="phase-title-sm">System Monitor</div>
+          <div class="phase-dur">~4 ชั่วโมง</div>
+          <div class="phase-dot"></div>
+        </div>
+        <div class="phase-body">
+          <h3>Health Dashboard + Gemini Usage Tracking</h3>
+          <p class="desc">เก็บ Gemini call log ใน DB — แสดง call count วันนี้, avg latency, error rate และ DB connection health</p>
+          <div class="chips">
+            <span class="chip">GET /admin/monitor</span>
+            <span class="chip gem">Gemini quota tracking</span>
+            <span class="chip safe">DB health check</span>
+            <span class="chip">Error rate 24h</span>
+          </div>
+          <div class="warnbox" style="margin-top:12px">
+            <div class="wi">💡</div>
+            <div class="wt"><b>Gemini API ไม่มี built-in quota API</b> — ต้องเก็บ counter เองใน DB ทุกครั้งที่ call <code>generate_content()</code> บันทึก timestamp + latency ลง <code>gemini_logs</code> table และ query aggregate ใน <code>/admin/monitor</code></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /phases -->
+
+    <!-- Summary checklist -->
+    <div class="warnbox reveal" style="margin-top:32px">
+      <div class="wi">✅</div>
+      <div class="wt">
+        <b>สรุป Phase 4 Deliverables:</b><br>
+        📁 admin/ folder (Vite + Tailwind + Alpine + Chart.js) ·
+        🐳 admin service ใน docker-compose ·
+        🔐 JWT login ·
+        📊 Dashboard stats + charts ·
+        🔍 Scan/Device management tables ·
+        🧪 Ingredient override rules ·
+        ⚙️ System monitor ·
+        📤 Export CSV
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <!-- API SPEC -->
 <section id="api" style="background:var(--paper-2)">
   <div class="wrap">
@@ -898,7 +1533,42 @@ wrangler pages deploy frontend/dist --project-name kinloei
             <td>device_id</td>
             <td>ลบข้อมูลทั้งหมด (PDPA compliance)</td>
           </tr>
-        </tbody>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><code>/auth/register</code></td>
+            <td>JSON: email, password, display_name?, device_id?</td>
+            <td>JWT token + user info · link device ที่มีอยู่กับบัญชีใหม่ได้</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><code>/auth/login</code></td>
+            <td>JSON: email, password</td>
+            <td>JWT token (7 วัน) + user info</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/auth/me</code></td>
+            <td>Bearer token (header)</td>
+            <td>ข้อมูล user ปัจจุบัน</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><code>/admin/login</code></td>
+            <td>JSON: username, password (env credentials)</td>
+            <td>JWT token role=admin (8 ชม.)</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/users</code></td>
+            <td>Bearer (admin) · ?page &amp;size &amp;search</td>
+            <td>paginated user list</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><code>/admin/stats</code></td>
+            <td>Bearer (admin)</td>
+            <td>users total/registered · scans SAFE/CAUTION/AVOID count</td>
+          </tr>        </tbody>
       </table>
     </div>
     <div class="warnbox reveal">
@@ -1004,6 +1674,10 @@ wrangler pages deploy frontend/dist --project-name kinloei
     <div class="two-col reveal">
       <div>
         <h3 style="font-size:17px;color:var(--pine);margin-bottom:16px">PWA Technical</h3>
+        <div class="checklist" style="margin-bottom:12px">
+          <div class="cli"><div class="cb" style="background:var(--safe)"></div><span>User register/login ทำงานได้ — JWT token หมดอายุใน 7 วัน</span></div>
+          <div class="cli"><div class="cb" style="background:var(--safe)"></div><span>Admin login (/admin/login) ด้วย ADMIN_USER/ADMIN_PASSWORD ใน .env</span></div>
+          <div class="cli"><div class="cb" style="background:var(--safe)"></div><span>Gemini fallback chain: gemini-3-flash-preview → 2.5-flash-preview → 2.0-flash → 1.5-flash</span></div>        </div>
         <div class="checklist">
           <div class="cli"><div class="cb"></div><span>Lighthouse PWA score ≥ 90 (Chrome DevTools)</span></div>
           <div class="cli"><div class="cb"></div><span>manifest.json มี name, icons (192+512px), display:standalone</span></div>
@@ -1013,6 +1687,19 @@ wrangler pages deploy frontend/dist --project-name kinloei
           <div class="cli"><div class="cb"></div><span>VITE_API_URL ชี้ไป production backend (ไม่ใช่ localhost)</span></div>
           <div class="cli"><div class="cb"></div><span>CORS backend อนุญาต domain ของ frontend</span></div>
           <div class="cli"><div class="cb"></div><span>"Add to Home Screen" ทดสอบแล้วบน Android + iOS</span></div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:17px;color:var(--pine);margin-bottom:16px">Admin Dashboard (Phase 4)</h3>
+        <div class="checklist">
+          <div class="cli"><div class="cb"></div><span>admin/ project build ได้ด้วย <code>npm run build</code></span></div>
+          <div class="cli"><div class="cb"></div><span>Login JWT ทำงานได้ — token หมดอายุใน 8 ชั่วโมง</span></div>
+          <div class="cli"><div class="cb"></div><span>Route guard redirect ไป login ถ้าไม่มี token</span></div>
+          <div class="cli"><div class="cb"></div><span>Dashboard stats โหลดได้และ chart แสดงผล</span></div>
+          <div class="cli"><div class="cb"></div><span>Scan table filter/paginate/delete ได้</span></div>
+          <div class="cli"><div class="cb"></div><span>Device management ลบ PDPA ได้จริง</span></div>
+          <div class="cli"><div class="cb"></div><span>Ingredient rules เพิ่ม/ลบได้และ Gemini รับกฎไปใช้</span></div>
+          <div class="cli"><div class="cb"></div><span>Admin port 18081 ไม่ expose สาธารณะ (firewall/VPN)</span></div>
         </div>
       </div>
       <div>
@@ -1050,7 +1737,7 @@ wrangler pages deploy frontend/dist --project-name kinloei
       </div>
     </div>
     <div class="rule"></div>
-    <div class="fine">อ้างอิงจาก กินเลย Blueprint Mark 2 · Vite 5 · vite-plugin-pwa 0.21 · idb 8 · FastAPI 0.115 · Gemini 2.0 Flash · ตรวจสอบ version ล่าสุดของ package ก่อนพัฒนาจริง</div>
+    <div class="fine">อ้างอิงจาก กินเลย Blueprint Mark 2 · Vite · vite-plugin-pwa · idb · FastAPI 0.115 · <b style="color:#9fd4b4">Gemini:</b> gemini-3-flash-preview (fallback chain) · <b style="color:#9fd4b4">Auth:</b> python-jose · passlib[bcrypt]==1.7.4 + bcrypt==4.0.1 · <b style="color:#9fd4b4">Phase 4:</b> Tailwind CSS 3.4 · Alpine.js 3 · Chart.js 4 · ตรวจสอบ version ล่าสุดของ package ก่อนพัฒนาจริง</div>
   </div>
 </footer>
 
@@ -1073,3 +1760,4 @@ document.querySelectorAll('section[id]').forEach(s => navIo.observe(s))
 </script>
 </body>
 </html>
+
