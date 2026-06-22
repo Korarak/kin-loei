@@ -1,3 +1,5 @@
+import { pushHardwareAlert } from '../api.js'
+
 function renderProductSearch(ps) {
   if (!ps) return ''
 
@@ -256,4 +258,15 @@ export function renderResult(el) {
       </div>
     </div>
   `
+
+  // แจ้ง Arduino — fire-and-forget ไม่ต้อง await
+  const deviceId = localStorage.getItem('kinloei_device_id') ?? ''
+  if (deviceId) {
+    pushHardwareAlert({
+      deviceId,
+      status,
+      productName: product_name ?? '',
+      flagged: flagged_ingredients.map(f => f.name).filter(Boolean),
+    })
+  }
 }

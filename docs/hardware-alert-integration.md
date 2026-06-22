@@ -327,9 +327,10 @@ curl -X POST https://kinloei-api.loeitech.org/hardware/alert \
 
 ## Checklist ก่อนนำไปใช้จริง
 
-- [ ] `backend/routers/hardware.py` implement POST + GET
-- [ ] Register router ใน `backend/main.py`
-- [ ] `frontend/src/pages/result.js` POST หลัง render result
+- [x] `backend/routers/hardware.py` implement POST + GET
+- [x] Register router ใน `backend/main.py`
+- [x] `frontend/src/api.js` เพิ่ม `pushHardwareAlert()`
+- [x] `frontend/src/pages/result.js` POST หลัง render result
 - [ ] Arduino sketch: แก้ SSID / PASSWORD / DEVICE_ID
 - [ ] ทดสอบ curl จากภายนอก network ก่อน upload sketch
 - [ ] เปิด Serial Monitor ดู log ขณะ Arduino poll

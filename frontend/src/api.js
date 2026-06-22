@@ -110,3 +110,20 @@ export async function healthCheck() {
     return res.ok
   } catch { return false }
 }
+
+// ── Hardware alert (Arduino Modulino Pixel) ──────────────────────────────────
+
+export function pushHardwareAlert({ deviceId, status, productName, flagged }) {
+  // fire-and-forget — ไม่ block UI, ไม่แสดง error ถ้าบอร์ดไม่ได้เชื่อม
+  fetch(`${BASE}/hardware/alert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      device_id:    deviceId,
+      status:       status,
+      product_name: productName ?? '',
+      flagged:      flagged ?? [],
+      ttl:          status === 'SAFE' ? 10 : 60,
+    }),
+  }).catch(() => {})
+}
