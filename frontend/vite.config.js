@@ -1,5 +1,9 @@
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [
@@ -63,6 +67,10 @@ export default defineConfig({
   build: {
     target: ['es2020', 'chrome89', 'safari14'],
     rollupOptions: {
+      input: {
+        main:  resolve(__dirname, 'index.html'),
+        admin: resolve(__dirname, 'admin.html'),
+      },
       output: {
         // แยก chunk ตามหน้า — browser โหลดเฉพาะที่ต้องการ
         manualChunks(id) {

@@ -3,13 +3,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from core.database import init_db
+from core.database import init_db, seed_dev_users
 from routers import analyze, profile, auth, admin
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await seed_dev_users()
     yield
 
 
