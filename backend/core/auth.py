@@ -46,6 +46,16 @@ def require_user(creds: HTTPAuthorizationCredentials | None = Depends(_bearer)) 
     return _decode(creds.credentials)
 
 
+def decode_optional(creds: HTTPAuthorizationCredentials | None) -> dict | None:
+    """Decode JWT if present and valid; return None instead of raising."""
+    if not creds:
+        return None
+    try:
+        return jwt.decode(creds.credentials, settings.secret_key, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+
+
 def require_admin(creds: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> dict:
     if not creds:
         raise HTTPException(401, "กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแล")

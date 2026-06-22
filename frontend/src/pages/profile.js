@@ -268,6 +268,13 @@ export async function renderProfile(el) {
   })
 
   wrap.querySelector('#save-btn').addEventListener('click', async () => {
+    // flush any text still in tag inputs (user typed but didn't press Enter)
+    for (const id of ['cond-input', 'allergy-input', 'avoid-input']) {
+      const inp = wrap.querySelector(`#${id}`)
+      if (inp?.value.trim())
+        inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    }
+
     const newProfile = {
       conditions:        getTagValues(wrap, 'cond-wrap'),
       allergies:         getTagValues(wrap, 'allergy-wrap'),
@@ -275,9 +282,21 @@ export async function renderProfile(el) {
       notes:             wrap.querySelector('#notes-input').value.trim(),
       nutrient_limits:   collectNutrientLimits(nutrientList),
     }
-    await saveProfile(newProfile)
-    syncProfile(getDeviceId(), newProfile).catch(() => {})
-    showToast('บันทึกแล้ว ✓')
+
+    const btn = wrap.querySelector('#save-btn')
+    btn.disabled = true
+    try {
+      await saveProfile(newProfile)
+      // use the authenticated user's device_id if available (cross-device correctness)
+      const syncDeviceId = (loggedIn && user?.device_id) ? user.device_id : getDeviceId()
+      syncProfile(syncDeviceId, newProfile).catch(() => {})
+      showToast('บันทึกแล้ว ✓')
+    } catch (err) {
+      showToast('❌ บันทึกไม่สำเร็จ กรุณาลองใหม่')
+      console.error(err)
+    } finally {
+      btn.disabled = false
+    }
   })
 
   wrap.querySelector('#delete-btn').addEventListener('click', async () => {
