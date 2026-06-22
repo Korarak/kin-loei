@@ -9,11 +9,20 @@ from core.models import User
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
+class NutrientLimitItem(BaseModel):
+    key: str
+    label: str
+    max: float
+    unit: str
+    enabled: bool = True
+
+
 class HealthProfile(BaseModel):
     conditions: list[str] = []
     allergies: list[str] = []
     avoid_ingredients: list[str] = []
     notes: str = ""
+    nutrient_limits: list[NutrientLimitItem] = []
 
 
 @router.get("/{device_id}")

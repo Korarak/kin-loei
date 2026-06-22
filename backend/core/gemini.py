@@ -333,6 +333,11 @@ def _build_profile_text(profile: dict) -> str:
         lines.append(f"- ส่วนผสมที่ต้องเลี่ยง: {', '.join(profile['avoid_ingredients'])}")
     if profile.get("notes"):
         lines.append(f"- หมายเหตุ: {profile['notes']}")
+    nutrient_limits = profile.get("nutrient_limits") or []
+    active_limits = [l for l in nutrient_limits if l.get("enabled") and l.get("max", 0) > 0]
+    if active_limits:
+        parts = [f"{l['label']} ≤ {l['max']} {l['unit']}/วัน" for l in active_limits]
+        lines.append(f"- จำกัดสารอาหาร (ต้องแจ้งเตือนถ้าเกินเกณฑ์): {', '.join(parts)}")
     if len(lines) == 1:
         lines.append("- ไม่มีข้อมูลสุขภาพพิเศษ")
     return "\n".join(lines)

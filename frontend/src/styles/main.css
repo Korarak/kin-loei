@@ -52,6 +52,10 @@
   --radius-sm: 16px;
   --radius-xs: 12px;
 
+  /* ── Top bar ─────────────────────────────────── */
+  --top-bar-h:   52px;
+  --safe-top:    env(safe-area-inset-top, 0px);
+
   /* ── Floating nav ─────────────────────────────── */
   --nav-h:       68px;
   --nav-gap:     12px;
@@ -75,6 +79,7 @@ body {
   background: var(--bg);
   color: var(--ink); line-height: 1.65; font-weight: 400;
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  padding-top: calc(var(--top-bar-h) + var(--safe-top));
   padding-bottom: calc(var(--nav-h) + var(--nav-gap) + var(--safe-bottom) + 24px);
   min-height: 100dvh;
 }
@@ -109,9 +114,40 @@ img { display: block; }
 /* ═══════════════════════════════════════════════
    HERO — medical blue with health cross pattern
    ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   TOP BAR — fixed brand header
+   ═══════════════════════════════════════════════ */
+.top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: calc(var(--top-bar-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+  z-index: 110;
+  background: rgba(255,255,255,.9);
+  backdrop-filter: blur(28px) saturate(1.5);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  border-bottom: 1px solid rgba(0,30,100,.07);
+  display: flex; align-items: center;
+  padding-left: 18px; padding-right: 18px;
+}
+.top-bar-brand {
+  display: flex; align-items: center; gap: 9px;
+}
+.top-bar-icon {
+  width: 30px; height: 30px; border-radius: 9px; flex: none;
+  background: linear-gradient(135deg, #1A8FEB, #004E99);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 2px 8px rgba(0,119,204,.3);
+}
+.top-bar-name {
+  font-family: 'Bai Jamjuree'; font-weight: 800;
+  font-size: 19px; color: var(--brand); letter-spacing: -.025em;
+}
+
 .page-hero {
   background: linear-gradient(148deg, #0088E0 0%, #0066BB 50%, #004A99 100%);
-  padding: 58px 20px 38px;
+  padding: 18px 20px 38px;
   position: relative; overflow: hidden;
 }
 /* Subtle dot grid — sterile/clinical */
@@ -756,11 +792,226 @@ a.pill-src:hover { background: var(--brand-light); color: var(--brand); border-c
   animation: toastIn .25s ease both;
 }
 
+/* ═══════════════════════════════════════════════
+   NUTRIENT LIMITS — profile page
+   ═══════════════════════════════════════════════ */
+.nutrient-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 0; border-bottom: 1px solid #E8EEF8;
+}
+.nutrient-row:last-child { border-bottom: none; }
+
+/* Toggle switch */
+.nt-toggle {
+  position: relative; width: 44px; height: 26px; flex: none; cursor: pointer;
+}
+.nt-chk { position: absolute; opacity: 0; width: 0; height: 0; }
+.nt-slider {
+  position: absolute; inset: 0; border-radius: 13px;
+  background: #D0DCF0; transition: background .22s;
+  cursor: pointer;
+}
+.nt-slider::before {
+  content: ''; position: absolute;
+  width: 20px; height: 20px; border-radius: 50%;
+  left: 3px; top: 3px;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.nt-chk:checked + .nt-slider { background: var(--brand); }
+.nt-chk:checked + .nt-slider::before { transform: translateX(18px); }
+
+/* Name */
+.nt-name { flex: 1; font-size: var(--text-sm); color: var(--ink); font-weight: 500; }
+.nt-name-input {
+  flex: 1; font-size: var(--text-sm); color: var(--ink);
+  border: 1px solid #D0DCF0; border-radius: 10px;
+  padding: 7px 12px; background: var(--bg); font-family: inherit;
+  transition: border-color .2s, box-shadow .2s;
+}
+.nt-name-input:focus {
+  outline: none; border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(0,119,204,.1); background: #fff;
+}
+.nt-name-input::placeholder { color: var(--ink-faint); }
+
+/* Limit input */
+.nt-limit { display: flex; align-items: center; gap: 7px; flex: none; }
+.nt-max {
+  width: 72px; text-align: right; padding: 7px 10px;
+  border: 1px solid #D0DCF0; border-radius: 10px;
+  font-size: var(--text-sm); color: var(--ink); background: var(--bg);
+  font-family: 'IBM Plex Mono'; font-weight: 600;
+  transition: border-color .2s, box-shadow .2s, opacity .2s;
+  -moz-appearance: textfield;
+}
+.nt-max::-webkit-inner-spin-button,
+.nt-max::-webkit-outer-spin-button { -webkit-appearance: none; }
+.nt-max:focus {
+  outline: none; border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(0,119,204,.1); background: #fff;
+}
+.nt-max:disabled { opacity: .3; pointer-events: none; }
+
+.nt-unit {
+  font-size: 11px; color: var(--ink-faint);
+  font-family: 'IBM Plex Mono'; min-width: 28px;
+}
+.nt-unit-sel {
+  font-size: 11px; color: var(--ink-soft); font-family: 'IBM Plex Mono';
+  border: 1px solid #D0DCF0; border-radius: 8px;
+  padding: 6px 8px; background: var(--bg); cursor: pointer;
+  transition: border-color .2s;
+}
+.nt-unit-sel:focus { outline: none; border-color: var(--brand); }
+
+/* Delete button */
+.nt-del {
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  background: var(--avoid-bg); color: var(--avoid);
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--avoid-bg-2); cursor: pointer;
+  transition: background .15s, transform .15s;
+  line-height: 1;
+}
+.nt-del:hover { background: var(--avoid-bg-2); }
+.nt-del:active { transform: scale(.88); }
+
+/* Add-nutrient dashed button */
+.btn-add-nutrient {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 13px 16px; margin-top: 10px;
+  border: 1.5px dashed rgba(0,119,204,.3); border-radius: 14px;
+  background: var(--bg); color: var(--brand);
+  font-size: var(--text-sm); font-weight: 600; font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .14s;
+}
+.btn-add-nutrient:hover { background: var(--brand-light); border-color: var(--brand); }
+.btn-add-nutrient:active { transform: scale(.97); }
+
+/* ═══════════════════════════════════════════════
+   AUTH MODAL
+   ═══════════════════════════════════════════════ */
+.auth-modal-backdrop {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(10,30,61,.55); backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; transition: opacity .25s;
+}
+.auth-modal-backdrop.am-open { opacity: 1; }
+
+.auth-modal {
+  width: 100%; max-width: 480px;
+  background: var(--bg-card); border-radius: 32px 32px 0 0;
+  padding: 28px 24px calc(env(safe-area-inset-bottom, 0px) + 32px);
+  position: relative;
+  transform: translateY(60px); transition: transform .28s cubic-bezier(.16,1,.3,1);
+  max-height: 92dvh; overflow-y: auto;
+}
+.auth-modal-backdrop.am-open .auth-modal { transform: translateY(0); }
+
+.auth-modal-close {
+  position: absolute; top: 18px; right: 20px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--bg-2); color: var(--ink-soft);
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.auth-modal-close:hover { background: var(--bg); color: var(--ink); }
+
+/* Tabs */
+.auth-tabs {
+  display: flex; gap: 6px; margin-bottom: 24px;
+  background: var(--bg-2); border-radius: 16px; padding: 5px;
+}
+.auth-tab {
+  flex: 1; padding: 10px; border-radius: 12px;
+  font-family: 'Bai Jamjuree'; font-weight: 600; font-size: 14px;
+  color: var(--ink-soft); background: transparent;
+  border: none; cursor: pointer; transition: background .18s, color .18s;
+}
+.auth-tab.active {
+  background: var(--bg-card); color: var(--brand);
+  box-shadow: var(--sh-sm);
+}
+
+/* Form fields */
+.am-field { margin-bottom: 16px; }
+.am-label {
+  display: block; font-size: 11px; font-weight: 700;
+  color: var(--brand); letter-spacing: .12em;
+  text-transform: uppercase; font-family: 'IBM Plex Mono';
+  margin-bottom: 8px;
+}
+.am-input {
+  width: 100%; padding: 14px 16px;
+  border: 1.5px solid #D0DCF0; border-radius: 14px;
+  font-size: 15px; color: var(--ink); background: var(--bg);
+  font-family: inherit;
+  transition: border-color .2s, box-shadow .2s;
+}
+.am-input:focus {
+  outline: none; border-color: var(--brand); background: #fff;
+  box-shadow: 0 0 0 4px rgba(0,119,204,.1);
+}
+.am-input::placeholder { color: var(--ink-faint); }
+.am-error {
+  font-size: 13px; color: var(--avoid); min-height: 16px;
+  margin: -6px 0 10px; font-weight: 500;
+}
+.am-submit { margin-top: 6px; }
+
+/* hidden utility */
+.hidden { display: none !important; }
+
+/* Account card */
+.account-card { border-left: 3px solid var(--safe); }
+.account-avatar {
+  width: 46px; height: 46px; border-radius: 16px; flex: none;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff; font-family: 'Bai Jamjuree'; font-size: 20px;
+  font-weight: 800; display: flex; align-items: center; justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════
+   EDIT NAME DIALOG — small centered modal
+   ═══════════════════════════════════════════════ */
+.edit-name-backdrop {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(10,30,61,.48); backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; transition: opacity .2s;
+}
+.edit-name-backdrop.end-open { opacity: 1; }
+
+.edit-name-dialog {
+  background: var(--bg-card); border-radius: 28px;
+  padding: 28px 24px 24px; width: 100%; max-width: 360px;
+  box-shadow: var(--sh-lg);
+  transform: scale(.92) translateY(12px);
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.edit-name-backdrop.end-open .edit-name-dialog {
+  transform: scale(1) translateY(0);
+}
+
+.end-title {
+  font-family: 'Bai Jamjuree'; font-size: 18px; font-weight: 800;
+  color: var(--ink); margin-bottom: 18px;
+}
+.end-input { margin-bottom: 4px; }
+.end-actions {
+  display: flex; gap: 10px; margin-top: 18px;
+}
+
 /* ── Responsive ───────────────────────────────── */
 @media (max-width: 480px) {
   .page        { padding: 14px 14px 24px; }
   .page-header { padding: 24px 14px 16px; }
-  .page-hero   { padding: 52px 16px 30px; }
+  .page-hero   { padding: 14px 16px 28px; }
   .bottom-nav  { left: 10px; right: 10px; }
 }
 

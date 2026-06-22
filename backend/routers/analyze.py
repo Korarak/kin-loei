@@ -18,11 +18,20 @@ ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 4 * 1024 * 1024  # 4 MB
 
 
+class NutrientLimitItem(BaseModel):
+    key: str
+    label: str
+    max: float
+    unit: str
+    enabled: bool = True
+
+
 class ProfilePayload(BaseModel):
     conditions: list[str] = []
     allergies: list[str] = []
     avoid_ingredients: list[str] = []
     notes: str = ""
+    nutrient_limits: list[NutrientLimitItem] = []
 
 
 @router.post("/scan")
