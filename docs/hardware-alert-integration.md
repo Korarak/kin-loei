@@ -1,63 +1,63 @@
-# Hardware Alert Integration — กินเลย × Arduino Modulino Pixel
+# Hardware Alert Integration
+## กินเลย × Arduino Uno R4 WiFi × Modulino Pixel
 
-## ภาพรวม
-
-เมื่อผลสแกนอาหารตรงกับสารก่อภูมิแพ้ในโปรไฟล์ผู้ใช้ ระบบจะส่ง alert ผ่าน HTTP
-ไปยัง **Arduino Uno R4 WiFi** ซึ่งจะแสดงระดับความรุนแรงผ่าน **Modulino Pixel**
-(8× RGB LED, I2C/QWIIC) แบบ real-time
-
-```
-[กินเลย PWA] ──scan result──► [FastAPI backend]
-                                      │
-                              POST /hardware/alert
-                                      │
-                              in-memory alert store
-                                      │
-                         ◄── GET /hardware/alert (poll 2s) ──[Arduino R4 WiFi]
-                                                                      │
-                                                               I2C (QWIIC)
-                                                                      │
-                                                            [Modulino Pixel 8 LED]
-```
+> **Protocol ที่เลือก: HTTP Short Polling**
+> Arduino poll endpoint ทุก 2 วินาที ผ่าน HTTPS ไปยัง `kinloei-api.loeitech.org`
 
 ---
 
-## Hardware ที่ใช้
+## ภาพรวมระบบ
+
+```
+ผู้ใช้สแกนอาหาร
+      │
+      ▼
+[กินเลย PWA]  ←  kinloei.loeitech.org
+      │
+      │  1. POST /hardware/alert
+      │     { status, product_name, flagged, ttl }
+      ▼
+[FastAPI]  ←  kinloei-api.loeitech.org
+      │
+      │  เก็บ alert state ใน memory (พร้อม TTL)
+      │
+      │  2. GET /hardware/alert?device_id=arduino-001
+      │     ← Arduino poll ทุก 2 วินาที
+      ▼
+[Arduino Uno R4 WiFi]
+      │
+      │  I2C / QWIIC
+      ▼
+[Modulino Pixel — 8× RGB LED]
+      │
+      └─► แสดงระดับความรุนแรงเป็นสี
+```
+
+### ทำไมถึงเลือก Short Polling
+
+- กระบวนการสแกน (ถ่ายภาพ → Gemini วิเคราะห์) ใช้เวลา **3–8 วินาที** อยู่แล้ว
+  latency 2 วินาทีของ polling จึงไม่รู้สึก
+- Arduino R4 WiFi มี `WiFiSSLClient` + `ArduinoHttpClient` **built-in** ไม่ต้องติดตั้งอะไรเพิ่ม
+- Debug ได้ด้วย `curl` ทันที ไม่ต้องการ broker หรือ infrastructure พิเศษ
+
+---
+
+## Hardware
 
 | ชิ้น | รุ่น | หมายเหตุ |
 |------|------|----------|
-| Microcontroller | Arduino Uno R4 WiFi | Built-in WiFi (ESP32-S3), QWIIC connector |
-| LED Module | Arduino Modulino Pixel | 8× WS2812B RGB LED, I2C address `0x6C` |
-| เชื่อมต่อ | QWIIC cable (3.3V I2C) | ต่อตรงจาก R4 WiFi port ไม่ต้องบัดกรี |
-
-### ทำไมถึงเลือก Arduino R4 WiFi
-- Built-in WiFi ไม่ต้องใช้ shield เพิ่ม
-- QWIIC port ตรงกับ Modulino ecosystem ต่อง่าย
-- RAM 32KB + Flash 256KB เพียงพอสำหรับ HTTP client + JSON parse
-- Library `WiFiS3.h` + `ArduinoHttpClient.h` รองรับ HTTP/1.1 ครบ
+| Microcontroller | Arduino Uno R4 WiFi | Built-in WiFi, QWIIC connector |
+| LED Module | Arduino Modulino Pixel | 8× WS2812B RGB, I2C `0x6C` |
+| สาย | QWIIC cable | ต่อตรง ไม่ต้องบัดกรี |
 
 ---
 
-## Protocol: HTTP Polling
-
-### เหตุผลที่เลือก HTTP แทน MQTT / WebSocket
-
-| Feature | HTTP Polling | MQTT | WebSocket |
-|---------|-------------|------|-----------|
-| Setup ความซับซ้อน | ต่ำ ✅ | กลาง (ต้องมี broker) | กลาง |
-| Arduino library | ครบ built-in ✅ | ต้องติดตั้งเพิ่ม | ต้องติดตั้งเพิ่ม |
-| Latency | ~2–3 วินาที ✅ | <1 วินาที | <1 วินาที |
-| Server complexity | ไม่ต้องมี broker ✅ | ต้องมี Mosquitto | ต้องจัดการ WS state |
-| Debug ง่าย? | ✅ ใช้ curl ทดสอบได้ | ❌ ต้องมี MQTT client | ❌ |
-
-**สรุป:** Latency 2–3 วินาทียอมรับได้สำหรับ use case นี้ (แจ้งเตือนก่อนกิน ไม่ใช่ real-time sensor)
-
----
-
-## API Specification
+## API Endpoints
 
 ### `POST /hardware/alert`
-> เรียกจาก frontend ทุกครั้งที่ผลสแกนเป็น CAUTION หรือ AVOID
+เรียกจาก **frontend** ทุกครั้งที่ผลสแกนเสร็จ (ทุกสถานะ รวมถึง SAFE เพื่อ reset LED)
+
+**URL:** `https://kinloei-api.loeitech.org/hardware/alert`
 
 **Request body:**
 ```json
@@ -72,11 +72,11 @@
 
 | Field | Type | คำอธิบาย |
 |-------|------|----------|
-| `device_id` | string | Device ID ของผู้ใช้ที่สแกน |
-| `status` | `SAFE` \| `CAUTION` \| `AVOID` | ผลการตรวจ |
-| `product_name` | string | ชื่อสินค้า |
-| `flagged` | string[] | รายการสารที่ตรวจพบ |
-| `ttl` | int | วินาทีที่ alert จะหมดอายุ (default 60) |
+| `device_id` | `string` | Device ID ของผู้ใช้ที่สแกน |
+| `status` | `SAFE` · `CAUTION` · `AVOID` | ผลการตรวจ |
+| `product_name` | `string` | ชื่อสินค้า |
+| `flagged` | `string[]` | สารที่ตรวจพบ (ว่างได้ถ้า SAFE) |
+| `ttl` | `int` | วินาทีก่อน alert หมดอายุ (default `60`) |
 
 **Response:**
 ```json
@@ -86,378 +86,267 @@
 ---
 
 ### `GET /hardware/alert`
-> Arduino poll ทุก 2 วินาที
+เรียกจาก **Arduino** ทุก 2 วินาที
 
-**Query params:**
-| Param | คำอธิบาย |
-|-------|----------|
-| `device_id` | (optional) filter เฉพาะ device นี้ ถ้าไม่ส่งจะดึง alert ล่าสุดของทั้งระบบ |
+**URL:** `https://kinloei-api.loeitech.org/hardware/alert?device_id=arduino-001`
+
+| Query param | คำอธิบาย |
+|-------------|----------|
+| `device_id` | กรอง alert เฉพาะ device นี้ (ถ้าไม่ส่งจะดึง alert ล่าสุดของทั้งระบบ) |
 
 **Response:**
 ```json
 {
-  "level": 2,
+  "level": 3,
   "status": "AVOID",
   "product_name": "มาม่าไก่",
   "flagged": ["ผงชูรส", "โซเดียมสูง 1380mg"],
-  "expires_in": 45,
+  "expires_in": 47,
   "updated_at": "2026-06-22T10:30:00Z"
 }
 ```
 
-| `level` | ความหมาย | LED behavior |
-|---------|----------|-------------|
-| `0` | ไม่มี alert / หมดอายุ | ดับทั้งหมด |
-| `1` | SAFE | เขียวหรี่ทั้ง 8 |
-| `2` | CAUTION — ควรระวัง | เหลืองอำพัน pulse ช้า |
-| `3` | AVOID — ห้ามกิน | แดงกระพริบเร็ว |
+**Level mapping:**
 
-> **หมายเหตุ:** SAFE ส่ง level 1 (ไม่ใช่ 0) เพื่อยืนยันว่าอุปกรณ์ยังทำงานอยู่
+| `level` | สถานะ | LED |
+|---------|-------|-----|
+| `0` | ไม่มี alert / หมดอายุแล้ว | ดับทั้งหมด |
+| `1` | SAFE | เขียวหรี่คงที่ |
+| `2` | CAUTION — ควรระวัง | เหลืองอำพัน pulse ช้า (800ms) |
+| `3` | AVOID — ห้ามกิน | แดงกระพริบเร็ว (280ms) |
 
----
-
-## LED Display Mapping
-
-```
-Modulino Pixel — 8 LEDs (ซ้าย → ขวา: LED 0–7)
-
-Level 0 (ว่าง / ไม่มี alert):
-  ○ ○ ○ ○ ○ ○ ○ ○   ดับหมด
-
-Level 1 (SAFE):
-  ● ● ● ● ● ● ● ●   เขียว #00FF00 brightness 20%
-  
-Level 2 (CAUTION):
-  ● ● ● ● ● ● ● ●   เหลืองอำพัน #FF8C00 brightness 60%
-  pulse เปิด/ปิดทุก 800ms
-
-Level 3 (AVOID):
-  ● ● ● ● ● ● ● ●   แดง #FF0000 brightness 100%
-  flash เปิด/ปิดทุก 300ms (เร็ว = อันตราย)
-```
-
-### ตัวอย่างเพิ่มเติมที่ปรับได้
-- แสดง flagged item count ด้วย LED จำนวน (เช่น 3 สารอันตราย = 3 LED แดง + 5 LED ส้ม)
-- ใช้ gradient สีตามความรุนแรง
+> SAFE ส่ง `level: 1` (ไม่ใช่ 0) เพื่อยืนยันว่าบอร์ดยังออนไลน์อยู่
 
 ---
 
-## สิ่งที่ต้องทำ (Scope)
+## LED Display
 
-### Backend (`backend/routers/hardware.py`)
-- [ ] `POST /hardware/alert` — รับ alert จาก frontend เก็บใน in-memory store
-- [ ] `GET /hardware/alert` — คืน current alert (พร้อม TTL check)
-- [ ] Auto-expire: alert หมดอายุหลัง TTL วินาที
-- [ ] Register router ใน `main.py`
-
-### Frontend (`frontend/src/pages/result.js`)
-- [ ] หลัง render result แล้ว ถ้า status เป็น `CAUTION` หรือ `AVOID` → `POST /hardware/alert`
-- [ ] ถ้าเป็น `SAFE` → `POST /hardware/alert` พร้อม `status: "SAFE"` เพื่อ reset LED
-
-### Arduino Sketch (`arduino/kinloei_alert/kinloei_alert.ino`)
-- [ ] Connect WiFi ด้วย SSID/password ที่กำหนดใน config
-- [ ] Poll `GET /hardware/alert?device_id=xxx` ทุก 2,000ms
-- [ ] Parse JSON response (ใช้ `ArduinoJson`)
-- [ ] แสดงผล LED ตาม level พร้อม animation
-- [ ] Fallback: ถ้า HTTP fail 5 ครั้งติด → LED ฟ้าสั้น (บอก WiFi problem)
-
-### Libraries ที่ต้องติดตั้ง (Arduino IDE)
 ```
-WiFiS3          — built-in กับ Arduino R4 WiFi
-ArduinoHttpClient — HTTP client
-ArduinoJson     — JSON parse (version 7.x)
-Arduino_Modulino — Modulino Pixel driver
+Modulino Pixel — 8 LEDs (0 ← → 7)
+
+Level 0 │ ○ ○ ○ ○ ○ ○ ○ ○  ดับ — ไม่มี alert
+Level 1 │ ● ● ● ● ● ● ● ●  เขียว  #00FF00 dim  — SAFE
+Level 2 │ ◉ ◉ ◉ ◉ ◉ ◉ ◉ ◉  เหลือง #FF8C00 pulse 800ms — CAUTION
+Level 3 │ ◉ ◉ ◉ ◉ ◉ ◉ ◉ ◉  แดง    #FF0000 flash 280ms — AVOID
+```
+
+Animation เป็น **non-blocking** (ใช้ `millis()` ไม่มี `delay()` ใน `loop()`)
+
+---
+
+## Timing Flow
+
+```
+t=0s   ผู้ใช้กดสแกน
+t=0s   กล้องถ่ายภาพ / รับ text input
+t=3-8s Gemini วิเคราะห์ → ได้ผล
+t=~8s  frontend แสดง result card
+t=~8s  frontend POST /hardware/alert  ← ทันที
+t=10s  Arduino poll รอบถัดไป (max 2 วิหลัง POST)
+t=10s  LED เปลี่ยนสี ✅
+```
+
+ผู้ใช้เห็นผลบนหน้าจอก่อน → LED ติดตามภายใน **≤ 2 วินาที**
+
+---
+
+## Backend — สิ่งที่ต้อง implement
+
+**ไฟล์:** `backend/routers/hardware.py`
+
+```
+POST /hardware/alert
+  ├─ รับ body → validate
+  ├─ map status → level (SAFE=1, CAUTION=2, AVOID=3)
+  ├─ เก็บใน dict: alert_store[device_id] = { ...data, expires_at }
+  └─ return { ok: true }
+
+GET /hardware/alert
+  ├─ ดึง alert จาก alert_store[device_id]
+  ├─ ถ้าหมดอายุ (expires_at < now) → level 0
+  ├─ คำนวณ expires_in (วินาทีที่เหลือ)
+  └─ return AlertResponse
+```
+
+**State:** ใช้ Python `dict` ใน memory (ไม่ต้องใช้ DB — alert อายุสั้น ≤ 60 วิ)
+
+**Register ใน** `backend/main.py`:
+```python
+from routers import hardware
+app.include_router(hardware.router)
 ```
 
 ---
 
-## Arduino Sketch (โครง)
+## Frontend — สิ่งที่ต้อง implement
+
+**ไฟล์:** `frontend/src/pages/result.js`
+
+หลัง render result card:
+```js
+// ส่ง alert ทุกครั้ง (รวม SAFE เพื่อ reset LED)
+await fetch('https://kinloei-api.loeitech.org/hardware/alert', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    device_id: deviceId,
+    status:       result.status,          // SAFE | CAUTION | AVOID
+    product_name: result.product_name ?? '',
+    flagged:      result.flagged_items ?? [],
+    ttl:          result.status === 'SAFE' ? 10 : 60,
+  }),
+})
+```
+
+ไม่ต้อง await หรือแสดง error ถ้า fail — เป็น fire-and-forget (บอร์ดไม่ได้เชื่อมต่อตลอดเวลา)
+
+---
+
+## Arduino Sketch
+
+**ไฟล์:** `arduino/kinloei_alert/kinloei_alert.ino`
+
+### Libraries ที่ต้องติดตั้ง (Arduino IDE → Library Manager)
+
+| Library | ที่มา |
+|---------|-------|
+| `WiFiS3` | built-in กับ Arduino R4 WiFi |
+| `ArduinoHttpClient` | Arduino Library Manager |
+| `ArduinoJson` v7.x | Arduino Library Manager |
+| `Arduino_Modulino` | Arduino Library Manager |
+
+### Config ที่ต้องแก้ก่อน upload
 
 ```cpp
-#include <WiFiS3.h>
-#include <ArduinoHttpClient.h>
-#include <ArduinoJson.h>
-#include <Modulino.h>
+// Production (HTTPS — kinloei-api.loeitech.org)
+const char* WIFI_SSID    = "ชื่อ WiFi";
+const char* WIFI_PASSWORD = "รหัส WiFi";
+const char* SERVER_HOST   = "kinloei-api.loeitech.org";
+const int   SERVER_PORT   = 443;          // HTTPS
+const char* DEVICE_ID     = "arduino-001";
 
-// ── Config ──────────────────────────────────────────
-const char* WIFI_SSID     = "YOUR_SSID";
-const char* WIFI_PASSWORD  = "YOUR_PASS";
-const char* SERVER_HOST    = "192.168.x.x";   // IP ของ backend (ไม่ใช่ localhost)
-const int   SERVER_PORT    = 18000;
-const char* DEVICE_ID      = "arduino-001";
-const int   POLL_INTERVAL  = 2000;            // ms
+// Local dev (สลับมาใช้ถ้าทดสอบกับ backend บน LAN)
+// const char* SERVER_HOST = "192.168.x.x";
+// const int   SERVER_PORT = 18000;
+```
 
-// ── Hardware ─────────────────────────────────────────
-ModulinoPixels pixels;
-WiFiClient wifi;
-HttpClient http(wifi, SERVER_HOST, SERVER_PORT);
+### Polling logic
 
-int  currentLevel = 0;
-bool ledState     = false;
-unsigned long lastPoll     = 0;
-unsigned long lastBlink    = 0;
-int  failCount    = 0;
-
-// ── Setup ─────────────────────────────────────────────
-void setup() {
-  Serial.begin(115200);
-  Modulino.begin();
-  pixels.begin();
-  pixels.clear();
-  pixels.show();
-
-  // WiFi connect
-  Serial.print("Connecting WiFi");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nConnected: " + WiFi.localIP().toString());
-  showLevel(0);  // เริ่มต้นดับ LED
-}
-
-// ── Loop ──────────────────────────────────────────────
+```cpp
 void loop() {
   unsigned long now = millis();
 
-  // Poll backend
-  if (now - lastPoll >= POLL_INTERVAL) {
+  if (now - lastPoll >= 2000) {   // poll ทุก 2 วิ
     lastPoll = now;
     pollAlert();
   }
 
-  // Animation (non-blocking)
-  animate(now);
+  animate(now);                   // LED animation non-blocking
 }
 
-// ── HTTP Poll ─────────────────────────────────────────
 void pollAlert() {
-  String path = "/hardware/alert?device_id=";
-  path += DEVICE_ID;
+  http.get("/hardware/alert?device_id=" + String(DEVICE_ID));
 
-  http.get(path);
-  int statusCode = http.responseStatusCode();
-  String body    = http.responseBody();
-
-  if (statusCode != 200) {
-    failCount++;
-    if (failCount >= 5) showWiFiError();
+  if (http.responseStatusCode() != 200) {
+    if (++failCount >= 5) showWiFiError();
     return;
   }
   failCount = 0;
 
   JsonDocument doc;
-  if (deserializeJson(doc, body) != DeserializationError::Ok) return;
+  deserializeJson(doc, http.responseBody());
 
   int newLevel = doc["level"] | 0;
   if (newLevel != currentLevel) {
     currentLevel = newLevel;
-    ledState = false;
-    lastBlink = 0;
-    showLevel(currentLevel);
+    applyLevel(currentLevel);
   }
-}
-
-// ── LED Control ───────────────────────────────────────
-void showLevel(int level) {
-  pixels.clear();
-  switch (level) {
-    case 0:  // ดับ
-      break;
-
-    case 1:  // SAFE — เขียวหรี่
-      for (int i = 0; i < 8; i++)
-        pixels.set(i, ModulinoColor(0, 50, 0));
-      break;
-
-    case 2:  // CAUTION — เหลืองอำพัน (animation ทำใน animate())
-      for (int i = 0; i < 8; i++)
-        pixels.set(i, ModulinoColor(255, 140, 0));
-      break;
-
-    case 3:  // AVOID — แดง (animation ทำใน animate())
-      for (int i = 0; i < 8; i++)
-        pixels.set(i, ModulinoColor(255, 0, 0));
-      break;
-  }
-  pixels.show();
-}
-
-// ── Non-blocking animation ───────────────────────────
-void animate(unsigned long now) {
-  if (currentLevel == 2) {          // CAUTION: pulse ทุก 800ms
-    if (now - lastBlink >= 800) {
-      lastBlink = now;
-      ledState = !ledState;
-      for (int i = 0; i < 8; i++)
-        pixels.set(i, ledState ? ModulinoColor(255, 140, 0) : ModulinoColor(0,0,0));
-      pixels.show();
-    }
-  } else if (currentLevel == 3) {   // AVOID: flash ทุก 300ms
-    if (now - lastBlink >= 300) {
-      lastBlink = now;
-      ledState = !ledState;
-      for (int i = 0; i < 8; i++)
-        pixels.set(i, ledState ? ModulinoColor(255, 0, 0) : ModulinoColor(0,0,0));
-      pixels.show();
-    }
-  }
-}
-
-// ── WiFi error indicator (ฟ้าสั้น) ───────────────────
-void showWiFiError() {
-  for (int i = 0; i < 8; i++) pixels.set(i, ModulinoColor(0, 0, 255));
-  pixels.show();
-  delay(200);
-  pixels.clear();
-  pixels.show();
 }
 ```
 
 ---
 
-## ขั้นตอนการตั้งค่า (Quick Start)
+## Network Diagram (Production)
 
-1. **Backend** — รัน `docker compose up` ตามปกติ port 18000
-2. **Arduino** — เปิด `arduino/kinloei_alert/kinloei_alert.ino`
-   - แก้ `WIFI_SSID`, `WIFI_PASSWORD`
-   - แก้ `SERVER_HOST` เป็น IP ของเครื่องที่รัน backend (ดูด้วย `ipconfig`)
-   - Upload ขึ้น Arduino R4 WiFi
-3. **ทดสอบ** — เปิด Serial Monitor ดู log + เปิดแอปสแกนอาหาร
+```
+ [WiFi — ที่ไหนก็ได้ที่ออกเน็ตได้]
+        │
+        │  HTTPS :443
+        ▼
+ kinloei-api.loeitech.org
+        │
+        │  nginx → terminate TLS
+        │  proxy_pass → localhost:18000
+        ▼
+ [FastAPI :18000]
+        │
+        │  GET /hardware/alert
+        ▼
+ { "level": 3, "status": "AVOID", ... }
+        │
+        ▼
+ [Arduino R4 WiFi]
+        │  I2C / QWIIC
+        ▼
+ [Modulino Pixel]  🔴 flash เร็ว = AVOID
+```
 
-### ทดสอบ endpoint ด้วย curl
+---
+
+## ทดสอบด้วย curl
+
 ```bash
-# ส่ง AVOID alert ทดสอบ
-curl -X POST http://localhost:18000/hardware/alert \
+# 1. ส่ง AVOID alert (จำลองผล scan)
+curl -X POST https://kinloei-api.loeitech.org/hardware/alert \
   -H "Content-Type: application/json" \
-  -d '{"device_id":"arduino-001","status":"AVOID","product_name":"ทดสอบ","flagged":["กุ้ง"],"ttl":60}'
+  -d '{
+    "device_id": "arduino-001",
+    "status": "AVOID",
+    "product_name": "มาม่าไก่",
+    "flagged": ["ผงชูรส", "โซเดียมสูง"],
+    "ttl": 60
+  }'
 
-# Arduino poll (ดู response)
-curl http://localhost:18000/hardware/alert?device_id=arduino-001
+# 2. ดู state ที่ Arduino จะได้รับ
+curl "https://kinloei-api.loeitech.org/hardware/alert?device_id=arduino-001"
 
-# Reset (SAFE)
-curl -X POST http://localhost:18000/hardware/alert \
+# 3. ส่ง CAUTION
+curl -X POST https://kinloei-api.loeitech.org/hardware/alert \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":"arduino-001","status":"CAUTION","product_name":"โกโก้","flagged":["น้ำตาลสูง"],"ttl":60}'
+
+# 4. Reset LED (SAFE)
+curl -X POST https://kinloei-api.loeitech.org/hardware/alert \
   -H "Content-Type: application/json" \
   -d '{"device_id":"arduino-001","status":"SAFE","product_name":"","flagged":[],"ttl":10}'
 ```
 
----
-
-## Network Diagram
-
-```
- ┌─────────────────────────────────┐
- │  LAN / WiFi network             │
- │                                 │
- │  ┌──────────────┐  HTTP:18000   │
- │  │ กินเลย App  │──────────────►│
- │  │ (browser)    │               │   ┌──────────────────┐
- │  └──────────────┘               │   │ FastAPI Backend  │
- │                                 │   │ port 18000       │
- │  ┌──────────────┐  GET poll 2s  │   │                  │
- │  │ Arduino R4   │◄──────────────┤   │ /hardware/alert  │
- │  │ WiFi         │               │   └──────────────────┘
- │  └──────┬───────┘               │
- │         │ I2C (QWIIC)           │
- │  ┌──────▼───────┐               │
- │  │ Modulino     │               │
- │  │ Pixel 8 LED  │               │
- │  └──────────────┘               │
- └─────────────────────────────────┘
-```
+> ถ้า curl ตอบได้จากมือถือ 4G → Arduino ที่ต่อ WiFi เดียวกันตอบได้แน่นอน
 
 ---
 
-## Production Deployment (HTTPS บน domain จริง)
+## Checklist ก่อนนำไปใช้จริง
 
-### ทำไม Arduino ถึงเข้าถึง `https://kinloei-loeitech.ac.th` ได้
-
-Arduino Uno R4 WiFi มี `WiFiSSLClient` built-in รองรับ TLS 1.2 ได้โดยไม่ต้องติดตั้งอะไรเพิ่ม
-ตราบที่บอร์ดออกอินเทอร์เน็ตได้ (WiFi ร้านกาแฟ, มือถือ hotspot, ระบบ WiFi โรงเรียน)
-ก็ยิง HTTPS request ไปที่ domain ได้เหมือน browser ทั่วไป
-
-```
-[Arduino R4 WiFi]
-    │  WiFiSSLClient (TLS 1.2)
-    │  GET https://kinloei-loeitech.ac.th/hardware/alert
-    ▼
-[อินเทอร์เน็ต]
-    ▼
-[nginx reverse proxy :443]  ← terminate TLS ที่นี่
-    │  proxy_pass http://localhost:18000
-    ▼
-[FastAPI backend :18000]
-    │
-    └─► { "level": 3, "status": "AVOID", ... }
-```
-
-### สิ่งที่ต้องแก้ในโค้ด
-
-| ตัวแปร | Local dev | Production |
-|--------|-----------|------------|
-| `SERVER_HOST` | `192.168.1.x` | `kinloei-loeitech.ac.th` |
-| `SERVER_PORT` | `18000` | `443` |
-| Client object | `WiFiClient` | `WiFiSSLClient` |
-
-sketch ปัจจุบัน (หลัง commit นี้) มี comment สลับ local/production ไว้แล้ว
-
-### nginx ต้องตั้งค่า proxy `/hardware/alert`
-
-ตรวจ nginx config ว่ามี location นี้หรือยัง:
-
-```nginx
-# /etc/nginx/sites-available/kinloei-loeitech.ac.th
-server {
-    listen 443 ssl;
-    server_name kinloei-loeitech.ac.th;
-
-    # ... SSL cert config ...
-
-    # forward ทุก path ไปที่ FastAPI backend
-    location / {
-        proxy_pass         http://localhost:18000;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-    }
-}
-```
-
-ถ้า nginx ส่งต่อ `/` ทั้งหมดไปที่ backend แล้ว ก็ไม่ต้องเพิ่มอะไร
-`/hardware/alert` จะถูก route ไปที่ FastAPI โดยอัตโนมัติ
-
-### ทดสอบจากภายนอกก่อน upload sketch
-
-```bash
-# ทดสอบ endpoint จากเครื่องอื่น (หรือมือถือ 4G)
-curl https://kinloei-loeitech.ac.th/hardware/alert
-
-# ส่ง alert ทดสอบ
-curl -X POST https://kinloei-loeitech.ac.th/hardware/alert \
-  -H "Content-Type: application/json" \
-  -d '{"device_id":"arduino-001","status":"AVOID","product_name":"ทดสอบ","flagged":["กุ้ง"],"ttl":60}'
-```
-
-ถ้า curl ตอบได้ → Arduino ตอบได้แน่นอน
-
-### ข้อจำกัดของ `WiFiSSLClient` บน Arduino
-
-| ข้อจำกัด | รายละเอียด |
-|---------|-----------|
-| ไม่ verify certificate | ยอมรับ cert ทุกใบ (ปลอดภัยพอสำหรับ read-only alert) |
-| TLS 1.2 เท่านั้น | nginx ต้อง support TLS 1.2 (default อยู่แล้ว) |
-| RAM จำกัด 32KB | JSON response ต้องไม่ใหญ่เกินไป (ปัจจุบัน ~200 bytes ไม่มีปัญหา) |
-| ไม่มี SNI บางเวอร์ชัน | ถ้า server มีหลาย domain ร่วม IP อาจต้องทดสอบ |
+- [ ] `backend/routers/hardware.py` implement POST + GET
+- [ ] Register router ใน `backend/main.py`
+- [ ] `frontend/src/pages/result.js` POST หลัง render result
+- [ ] Arduino sketch: แก้ SSID / PASSWORD / DEVICE_ID
+- [ ] ทดสอบ curl จากภายนอก network ก่อน upload sketch
+- [ ] เปิด Serial Monitor ดู log ขณะ Arduino poll
+- [ ] ยืนยัน LED ตอบสนองถูกต้องทั้ง 3 level
 
 ---
 
 ## ข้อควรระวัง
 
-- **Arduino ต้องอยู่ network เดียวกับ backend** — ถ้าใช้ Docker ต้องเปิด port 18000 ให้ LAN เข้าถึงได้ (ปัจจุบันเปิดอยู่แล้ว)
-- **IP ของ backend เปลี่ยนได้** — พิจารณาใช้ mDNS หรือ assign static IP
-- **ไม่มี auth บน `/hardware/alert`** — endpoint นี้ไม่ต้องการ token เพราะ Arduino ไม่มี secure storage; ถ้า production ควรเพิ่ม pre-shared key
-- **TTL ค่า default 60 วินาที** — หลังจากนั้น LED จะดับอัตโนมัติไม่ให้ค้างแสดง
+| ประเด็น | รายละเอียด |
+|---------|-----------|
+| ไม่มี auth บน endpoint | Arduino ไม่มี secure key storage — ยอมรับได้เพราะ GET เป็น read-only, POST มาจาก frontend ของเราเอง |
+| TTL สั้นกว่า poll interval | ถ้า TTL < 2 วิ Arduino อาจไม่ทัน — ตั้ง TTL ขั้นต่ำ 10 วิ |
+| WiFi หลุด | sketch มี `failCount` → LED ฟ้าวับเมื่อ fail 5 ครั้งติด |
+| `WiFiSSLClient` ไม่ verify cert | ยอมรับ cert ทุกใบ (ปลอดภัยพอสำหรับ use case นี้) |
+| JSON response ต้องเล็ก | Arduino RAM 32KB — response ปัจจุบัน ~150 bytes ไม่มีปัญหา |
 
 ---
 
-*branch: `hardware-alert` | สร้าง: 2026-06-22*
+*decision: Short Polling (HTTP) · branch: `hardware-alert` · updated: 2026-06-22*
