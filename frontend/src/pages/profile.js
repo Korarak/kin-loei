@@ -1,5 +1,5 @@
 import { getProfile, saveProfile, clearAllData, getDeviceId } from '../db.js'
-import { syncProfile, deleteAccount, logout, changePassword, updateDisplayName } from '../api.js'
+import { syncProfile, deleteAccount, logout, changePassword, updateDisplayName, getArduinoIP, setArduinoIP } from '../api.js'
 import { isLoggedIn, getUser, clearAuth, patchUser } from '../auth.js'
 import { openAuthModal } from '../authModal.js'
 
@@ -222,6 +222,29 @@ export async function renderProfile(el) {
         บันทึกโปรไฟล์
       </button>
 
+      <!-- ── Arduino LED Alert ── -->
+      <div class="card" id="arduino-card">
+        <div class="section-label" style="margin-top:0">💡 Arduino LED Alert <span style="font-size:11px;font-weight:400;color:var(--ink-faint);margin-left:4px">Local LAN</span></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;font-weight:400;line-height:1.7">
+          ระบุ IP ของบอร์ด Arduino Uno R4 WiFi เพื่อให้แอปส่งการแจ้งเตือนผ่าน WiFi โดยตรง<br>
+          <span style="font-size:12px;color:var(--ink-faint)">ดู IP ได้จาก Serial Monitor หลัง upload sketch · ใช้ได้เฉพาะในเครือข่าย WiFi เดียวกัน</span>
+        </p>
+        <div class="am-field" style="margin-bottom:10px">
+          <label class="am-label">IP ของบอร์ด</label>
+          <input class="am-input" id="arduino-ip-input" type="text"
+            placeholder="เช่น 192.168.1.42" autocomplete="off" inputmode="decimal">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="btn btn-secondary" id="arduino-test-btn" style="flex:1;font-size:13px;padding:11px">
+            🔴 ทดสอบ LED
+          </button>
+          <button class="btn btn-primary" id="arduino-save-btn" style="flex:1;font-size:13px;padding:11px">
+            บันทึก IP
+          </button>
+        </div>
+        <p id="arduino-status" style="font-size:12px;color:var(--ink-soft);margin:0;min-height:16px"></p>
+      </div>
+
       <!-- how it works -->
       <div class="card" style="background:linear-gradient(135deg,#EBF5FF,#DFF0FF);border:1.5px solid rgba(0,119,204,.14)">
         <div class="section-label" style="color:#0055AA;margin-top:0">วิธีที่ระบบใช้ข้อมูลนี้</div>
@@ -261,6 +284,50 @@ export async function renderProfile(el) {
   el.appendChild(wrap)
 
   wrap.querySelector('#device-label').textContent = 'Device: ' + getDeviceId().slice(0, 16) + '…'
+
+  // ── Arduino LED Alert section ─────────────────────────────────────────────
+  const arduinoIPInput = wrap.querySelector('#arduino-ip-input')
+  const arduinoStatus  = wrap.querySelector('#arduino-status')
+  arduinoIPInput.value = getArduinoIP()
+
+  wrap.querySelector('#arduino-save-btn').addEventListener('click', () => {
+    const ip = arduinoIPInput.value.trim()
+    setArduinoIP(ip)
+    arduinoStatus.textContent = ip ? `บันทึก IP: ${ip} แล้ว ✓` : 'ลบ IP Arduino แล้ว'
+    showToast(ip ? `บันทึก IP: ${ip} ✓` : 'ลบ IP Arduino แล้ว')
+  })
+
+  wrap.querySelector('#arduino-test-btn').addEventListener('click', async () => {
+    const ip = arduinoIPInput.value.trim()
+    if (!ip) { showToast('กรุณาระบุ IP ก่อน'); return }
+
+    const btn = wrap.querySelector('#arduino-test-btn')
+    btn.disabled = true
+    arduinoStatus.textContent = 'กำลังส่ง AVOID...'
+
+    try {
+      const r = await fetch(`http://${ip}/alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'AVOID' }),
+        signal: AbortSignal.timeout(4000),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      arduinoStatus.textContent = 'LED แดง — ทดสอบสำเร็จ ✓ (ปิดใน 3 วินาที)'
+      await new Promise(res => setTimeout(res, 3000))
+      await fetch(`http://${ip}/alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 0 }),
+        signal: AbortSignal.timeout(2000),
+      }).catch(() => {})
+      arduinoStatus.textContent = 'ทดสอบเสร็จ — LED ปิดแล้ว'
+    } catch {
+      arduinoStatus.textContent = `เชื่อมต่อ ${ip} ไม่สำเร็จ — ตรวจสอบ IP และ WiFi บอร์ด`
+    } finally {
+      btn.disabled = false
+    }
+  })
 
   // ── Account section events (always logged-in at this point) ────────────────
   wrap.querySelector('#acc-edit-name-btn').addEventListener('click', () => {

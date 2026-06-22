@@ -113,14 +113,34 @@ export async function healthCheck() {
 
 // ── Hardware alert (Arduino Modulino Pixel) ──────────────────────────────────
 
+export function getArduinoIP() {
+  return localStorage.getItem('kinloei_arduino_ip') ?? ''
+}
+
+export function setArduinoIP(ip) {
+  if (ip) localStorage.setItem('kinloei_arduino_ip', ip.trim())
+  else    localStorage.removeItem('kinloei_arduino_ip')
+}
+
 export function pushHardwareAlert({ deviceId, status, productName, flagged }) {
-  // fire-and-forget — ไม่ block UI, ไม่แสดง error ถ้าบอร์ดไม่ได้เชื่อม
+  const arduinoIP = getArduinoIP()
+
+  // ถ้ามี Arduino IP → push โดยตรงผ่าน local network (ไม่ต้อง await)
+  if (arduinoIP) {
+    fetch(`http://${arduinoIP}/alert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, product_name: productName ?? '', flagged: flagged ?? [] }),
+    }).catch(() => {})
+  }
+
+  // push ไปที่ backend ด้วยเสมอ (fire-and-forget)
   fetch(`${BASE}/hardware/alert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       device_id:    deviceId,
-      status:       status,
+      status,
       product_name: productName ?? '',
       flagged:      flagged ?? [],
       ttl:          status === 'SAFE' ? 10 : 60,
