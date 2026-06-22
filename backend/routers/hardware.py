@@ -1,9 +1,13 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
+import httpx
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
+
+from core.config import settings
 
 log = logging.getLogger("kinloei.hardware")
 
@@ -19,6 +23,19 @@ _events: list[str] = []
 
 LEVEL = {"SAFE": 1, "CAUTION": 2, "AVOID": 3}
 MAX_EVENTS = 40
+
+
+async def _push_to_board(payload: dict) -> None:
+    """Fire-and-forget HTTP push to Arduino App Lab REST endpoint."""
+    url = settings.arduino_board_url
+    if not url:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.post(f"{url}/api/alert", json=payload)
+            log.info("board push → %s %s", r.status_code, payload.get("status") or "level=0")
+    except Exception as exc:
+        log.warning("board push failed: %s", exc)
 
 
 def _log_event(msg: str):
@@ -54,6 +71,13 @@ async def post_alert(body: AlertBody):
     _store[body.device_id] = entry
     _store[_GLOBAL] = entry
     _log_event(f"POST alert  device={body.device_id}  status={body.status.upper()}  level={level}  ttl={body.ttl}s")
+
+    asyncio.create_task(_push_to_board({
+        "status":       body.status.upper(),
+        "product_name": body.product_name,
+        "flagged":      body.flagged,
+    }))
+
     return {"ok": True, "level": level}
 
 
@@ -92,6 +116,9 @@ async def delete_alert(device_id: str):
     if g and g is removed:
         _store.pop(_GLOBAL, None)
     _log_event(f"DELETE alert  device={device_id}  found={removed is not None}")
+
+    asyncio.create_task(_push_to_board({"level": 0}))
+
     return {"ok": True}
 
 

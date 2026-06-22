@@ -122,19 +122,45 @@ export function setArduinoIP(ip) {
   else    localStorage.removeItem('kinloei_arduino_ip')
 }
 
+// ── Arduino App Lab Socket.IO connection ──────────────────
+let _boardSocket = null
+let _boardIP = ''
+
+function _getBoardSocket(ip) {
+  // ip รูปแบบ "192.168.50.137" หรือ "192.168.50.137:7000"
+  const host = ip.includes(':') ? ip : `${ip}:7000`
+  if (_boardSocket && _boardIP === host) return _boardSocket
+  if (_boardSocket) { _boardSocket.disconnect(); _boardSocket = null }
+
+  // โหลด socket.io-client แบบ lazy จาก CDN ถ้ายังไม่มี
+  if (typeof io === 'undefined') return null
+
+  _boardIP = host
+  _boardSocket = io(`http://${host}`, { transports: ['websocket'], reconnection: false })
+  return _boardSocket
+}
+
 export function pushHardwareAlert({ deviceId, status, productName, flagged }) {
   const arduinoIP = getArduinoIP()
 
-  // ถ้ามี Arduino IP → push โดยตรงผ่าน local network (ไม่ต้อง await)
+  // ถ้ามี Arduino IP → push ผ่าน Socket.IO ไปที่ App Lab (port 7000)
   if (arduinoIP) {
-    fetch(`http://${arduinoIP}/alert`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, product_name: productName ?? '', flagged: flagged ?? [] }),
-    }).catch(() => {})
+    const payload = { status, product_name: productName ?? '', flagged: flagged ?? [] }
+    const sock = _getBoardSocket(arduinoIP)
+    if (sock) {
+      sock.emit('push_alert', payload)
+    } else {
+      // fallback: REST POST /alert (ถ้า App Lab เปิด REST ไว้)
+      const host = arduinoIP.includes(':') ? arduinoIP : `${arduinoIP}:7000`
+      fetch(`http://${host}/api/alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {})
+    }
   }
 
-  // push ไปที่ backend ด้วยเสมอ (fire-and-forget)
+  // push ไปที่ Docker backend ด้วยเสมอ (fire-and-forget)
   fetch(`${BASE}/hardware/alert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

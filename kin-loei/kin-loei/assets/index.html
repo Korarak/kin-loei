@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>กินเลย · LED Alert</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:monospace;background:#0d0d0d;color:#ddd;padding:20px;min-height:100vh}
+    h1{font-size:18px;color:#4fc;margin-bottom:2px}
+    .sub{font-size:11px;color:#444;margin-bottom:20px}
+
+    .level-ring{
+      width:120px;height:120px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;margin:0 auto 20px;
+      border:4px solid #222;transition:all .4s;
+    }
+    .level-ring .num{font-size:36px;font-weight:bold}
+    .level-ring .lbl{font-size:12px;margin-top:2px}
+
+    .l0{border-color:#333;color:#555}
+    .l1{border-color:#2d7;color:#2d7;box-shadow:0 0 20px #2d742}
+    .l2{border-color:#f80;color:#f80;box-shadow:0 0 20px #f8020}
+    .l3{border-color:#f33;color:#f33;box-shadow:0 0 20px #f3020;animation:pulse .5s infinite alternate}
+
+    @keyframes pulse{to{box-shadow:0 0 40px #f30}}
+
+    .info{background:#161616;border:1px solid #222;border-radius:6px;padding:12px 14px;margin-bottom:12px;font-size:13px}
+    .info .row{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e1e1e}
+    .info .row:last-child{border:none}
+    .info .k{color:#666;width:100px;flex:none}
+
+    .events{background:#161616;border:1px solid #222;border-radius:6px;padding:10px 14px;max-height:200px;overflow-y:auto}
+    .ev{font-size:11px;color:#6c6;padding:2px 0;border-bottom:1px solid #1a1a1a}
+    .ev:last-child{border:none}
+
+    h2{font-size:11px;color:#444;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#444;margin-right:6px;transition:.3s}
+    .connected .dot{background:#4fc}
+  </style>
+</head>
+<body>
+  <h1>กินเลย · LED Alert</h1>
+  <div class="sub" id="conn-label"><span class="dot"></span>เชื่อมต่อ...</div>
+
+  <div class="level-ring l0" id="ring">
+    <div class="num" id="ring-num">L0</div>
+    <div class="lbl" id="ring-lbl">ไม่มี alert</div>
+  </div>
+
+  <div class="info">
+    <div class="row"><span class="k">สินค้า</span><span id="product">—</span></div>
+    <div class="row"><span class="k">ส่วนผสม</span><span id="flagged">—</span></div>
+    <div class="row"><span class="k">อัปเดต</span><span id="updated">—</span></div>
+  </div>
+
+  <h2>ทดสอบ</h2>
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button onclick="test(1)" style="flex:1;padding:10px;background:#1a3a1a;color:#2d7;border:1px solid #2d7;border-radius:5px;cursor:pointer;font-size:13px">L1 SAFE</button>
+    <button onclick="test(2)" style="flex:1;padding:10px;background:#3a2a00;color:#f80;border:1px solid #f80;border-radius:5px;cursor:pointer;font-size:13px">L2 CAUTION</button>
+    <button onclick="test(3)" style="flex:1;padding:10px;background:#3a0000;color:#f33;border:1px solid #f33;border-radius:5px;cursor:pointer;font-size:13px">L3 AVOID</button>
+    <button onclick="test(0)" style="flex:1;padding:10px;background:#1a1a1a;color:#666;border:1px solid #444;border-radius:5px;cursor:pointer;font-size:13px">OFF</button>
+  </div>
+
+  <h2>Event Log</h2>
+  <div class="events" id="events"><div class="ev" style="color:#444">รอ event...</div></div>
+
+  <script src="libs/socket.io.min.js"></script>
+  <script>
+    const LABELS = ["ไม่มี alert", "SAFE", "CAUTION", "AVOID"]
+    const CLASSES = ["l0", "l1", "l2", "l3"]
+
+    const socket = io(`http://${window.location.host}`)
+    const connEl = document.getElementById("conn-label")
+    const ring   = document.getElementById("ring")
+
+    socket.on("connect", () => {
+      connEl.className = "sub connected"
+      connEl.innerHTML = '<span class="dot"></span>เชื่อมต่อแล้ว'
+      socket.emit("get_state", {})
+    })
+
+    socket.on("disconnect", () => {
+      connEl.className = "sub"
+      connEl.innerHTML = '<span class="dot"></span>ขาดการเชื่อมต่อ'
+    })
+
+    const TESTS = [
+      { level: 0 },
+      { status: "SAFE",    product_name: "ทดสอบ", flagged: [] },
+      { status: "CAUTION", product_name: "ทดสอบ", flagged: ["น้ำตาล"] },
+      { status: "AVOID",   product_name: "ทดสอบ", flagged: ["โซเดียม","MSG"] },
+    ]
+    function test(lv) { socket.emit("push_alert", TESTS[lv]) }
+
+    socket.on("alert_update", (d) => {
+      const lv = Math.min(d.level || 0, 3)
+      ring.className = "level-ring " + CLASSES[lv]
+      document.getElementById("ring-num").textContent = "L" + lv
+      document.getElementById("ring-lbl").textContent = LABELS[lv]
+      document.getElementById("product").textContent  = d.product_name || "—"
+      document.getElementById("flagged").textContent  = (d.flagged || []).join(", ") || "—"
+      document.getElementById("updated").textContent  = d.updated_at || "—"
+
+      if (d.events && d.events.length) {
+        const el = document.getElementById("events")
+        el.innerHTML = d.events.slice().reverse()
+          .map(e => `<div class="ev">${e}</div>`).join("")
+      }
+    })
+  </script>
+</body>
+</html>

@@ -8,7 +8,7 @@
 #include <Modulino.h>
 
 // ── ตั้งค่า Backend ───────────────────────────────────────
-const char* SERVER_HOST = "192.168.137.59";  // IP ของบอร์ดเอง (main.py รันบน Linux side)
+const char* SERVER_HOST = "192.168.50.137";  // IP ของบอร์ดเอง (main.py รันบน Linux side)
 const int   SERVER_PORT = 18000;
 const char* DEVICE_ID   = "arduino-001";
 
@@ -44,24 +44,31 @@ ModulinoColor colorBlack(0, 0, 0);
 
 void setup() {
   Serial.begin(9600);
-  delay(500);
-  Serial.println(F("[SETUP] Starting..."));
+  delay(1000);  // รอ Serial Monitor เปิด
+  Serial.println(F(""));
+  Serial.println(F("============================"));
+  Serial.println(F("[SETUP] กินเลย HW Alert v1.2"));
+  Serial.println(F("============================"));
 
+  // Modulino ก่อน Bridge เพื่อให้ LED ยืนยันว่า sketch รันถึง
+  Serial.println(F("[SETUP] Modulino init..."));
   Modulino.begin();
   pixels.begin();
   buttons.begin();
-  Serial.println(F("[SETUP] Modulino initialized."));
+  Serial.println(F("[SETUP] Modulino OK"));
 
-  // flash blue ยืนยันเปิดเครื่อง
+  // flash blue ยืนยัน sketch ทำงาน
   for (int i = 0; i < 8; i++) pixels.set(i, colorBlue);
   pixels.show();
-  delay(1000);
+  delay(800);
   pixels.clear();
   pixels.show();
 
-  Serial.println(F("[SETUP] Bridge.begin()..."));
+  // Bridge.begin() บล็อกได้นาน 30-90 วินาที รอ Linux side พร้อม
+  Serial.println(F("[SETUP] Bridge.begin() — waiting for Linux side..."));
+  Serial.flush();
   Bridge.begin();
-  Serial.println(F("[SETUP] READY"));
+  Serial.println(F("[SETUP] Bridge OK — READY"));
 }
 
 void loop() {

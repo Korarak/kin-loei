@@ -1,0 +1,6 @@
+name: kin-loei
+description: กินเลย — Hardware Alert LED via Modulino Pixels & RouterBridge RPC
+ports: []
+bricks:
+- arduino:web_ui: {}
+icon: 🌶️

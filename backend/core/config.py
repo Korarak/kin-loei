@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     admin_user: str = "admin"
     admin_password: str = "changeme"
 
+    # Arduino App Lab board URL (port 7000); set ARDUINO_BOARD_URL in .env to override
+    arduino_board_url: str = "http://192.168.50.137:7000"
+
     @property
     def database_url(self) -> str:
         return (

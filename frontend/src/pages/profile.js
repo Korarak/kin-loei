@@ -232,7 +232,7 @@ export async function renderProfile(el) {
         <div class="am-field" style="margin-bottom:10px">
           <label class="am-label">IP ของบอร์ด</label>
           <input class="am-input" id="arduino-ip-input" type="text"
-            placeholder="เช่น 192.168.1.42" autocomplete="off" inputmode="decimal">
+            placeholder="เช่น 192.168.50.137" autocomplete="off" inputmode="decimal">
         </div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <button class="btn btn-secondary" id="arduino-test-btn" style="flex:1;font-size:13px;padding:11px">
@@ -305,8 +305,9 @@ export async function renderProfile(el) {
     btn.disabled = true
     arduinoStatus.textContent = 'กำลังส่ง AVOID...'
 
+    const boardBase = ip.includes(':') ? `http://${ip}` : `http://${ip}:7000`
     try {
-      const r = await fetch(`http://${ip}/alert`, {
+      const r = await fetch(`${boardBase}/alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'AVOID' }),
@@ -315,10 +316,10 @@ export async function renderProfile(el) {
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       arduinoStatus.textContent = 'LED แดง — ทดสอบสำเร็จ ✓ (ปิดใน 3 วินาที)'
       await new Promise(res => setTimeout(res, 3000))
-      await fetch(`http://${ip}/alert`, {
+      await fetch(`${boardBase}/alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level: 0 }),
+        body: JSON.stringify({ level: 0, status: null }),
         signal: AbortSignal.timeout(2000),
       }).catch(() => {})
       arduinoStatus.textContent = 'ทดสอบเสร็จ — LED ปิดแล้ว'
