@@ -20,8 +20,17 @@
 // ── User Config ── แก้ค่าเหล่านี้ก่อน upload ─────────
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
-const char* SERVER_HOST    = "192.168.1.100";   // IP ของเครื่องที่รัน backend
-const int   SERVER_PORT    = 18000;
+
+// โหมด production (HTTPS บน domain จริง)
+const char* SERVER_HOST    = "kinloei-loeitech.ac.th";
+const int   SERVER_PORT    = 443;
+const bool  USE_HTTPS      = true;
+
+// โหมด local dev (HTTP บน LAN) — สลับมาใช้ถ้าทดสอบในบ้าน
+// const char* SERVER_HOST = "192.168.1.100";
+// const int   SERVER_PORT = 18000;
+// const bool  USE_HTTPS   = false;
+
 const char* DEVICE_ID      = "arduino-001";
 // ──────────────────────────────────────────────────────
 
@@ -29,8 +38,9 @@ const int   POLL_INTERVAL  = 2000;  // ms
 const int   MAX_FAIL       = 5;     // ครั้งที่ fail ก่อน error indicator
 
 ModulinoPixels pixels;
-WiFiClient     wifi;
-HttpClient     http(wifi, SERVER_HOST, SERVER_PORT);
+WiFiSSLClient  wifiSSL;   // HTTPS
+WiFiClient     wifiPlain; // HTTP (local dev)
+HttpClient     http(wifiSSL, SERVER_HOST, SERVER_PORT); // default HTTPS
 
 int           currentLevel = -1;   // -1 = ยังไม่ได้รับข้อมูล
 bool          ledState     = false;

@@ -369,6 +369,88 @@ curl -X POST http://localhost:18000/hardware/alert \
 
 ---
 
+## Production Deployment (HTTPS บน domain จริง)
+
+### ทำไม Arduino ถึงเข้าถึง `https://kinloei-loeitech.ac.th` ได้
+
+Arduino Uno R4 WiFi มี `WiFiSSLClient` built-in รองรับ TLS 1.2 ได้โดยไม่ต้องติดตั้งอะไรเพิ่ม
+ตราบที่บอร์ดออกอินเทอร์เน็ตได้ (WiFi ร้านกาแฟ, มือถือ hotspot, ระบบ WiFi โรงเรียน)
+ก็ยิง HTTPS request ไปที่ domain ได้เหมือน browser ทั่วไป
+
+```
+[Arduino R4 WiFi]
+    │  WiFiSSLClient (TLS 1.2)
+    │  GET https://kinloei-loeitech.ac.th/hardware/alert
+    ▼
+[อินเทอร์เน็ต]
+    ▼
+[nginx reverse proxy :443]  ← terminate TLS ที่นี่
+    │  proxy_pass http://localhost:18000
+    ▼
+[FastAPI backend :18000]
+    │
+    └─► { "level": 3, "status": "AVOID", ... }
+```
+
+### สิ่งที่ต้องแก้ในโค้ด
+
+| ตัวแปร | Local dev | Production |
+|--------|-----------|------------|
+| `SERVER_HOST` | `192.168.1.x` | `kinloei-loeitech.ac.th` |
+| `SERVER_PORT` | `18000` | `443` |
+| Client object | `WiFiClient` | `WiFiSSLClient` |
+
+sketch ปัจจุบัน (หลัง commit นี้) มี comment สลับ local/production ไว้แล้ว
+
+### nginx ต้องตั้งค่า proxy `/hardware/alert`
+
+ตรวจ nginx config ว่ามี location นี้หรือยัง:
+
+```nginx
+# /etc/nginx/sites-available/kinloei-loeitech.ac.th
+server {
+    listen 443 ssl;
+    server_name kinloei-loeitech.ac.th;
+
+    # ... SSL cert config ...
+
+    # forward ทุก path ไปที่ FastAPI backend
+    location / {
+        proxy_pass         http://localhost:18000;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+    }
+}
+```
+
+ถ้า nginx ส่งต่อ `/` ทั้งหมดไปที่ backend แล้ว ก็ไม่ต้องเพิ่มอะไร
+`/hardware/alert` จะถูก route ไปที่ FastAPI โดยอัตโนมัติ
+
+### ทดสอบจากภายนอกก่อน upload sketch
+
+```bash
+# ทดสอบ endpoint จากเครื่องอื่น (หรือมือถือ 4G)
+curl https://kinloei-loeitech.ac.th/hardware/alert
+
+# ส่ง alert ทดสอบ
+curl -X POST https://kinloei-loeitech.ac.th/hardware/alert \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":"arduino-001","status":"AVOID","product_name":"ทดสอบ","flagged":["กุ้ง"],"ttl":60}'
+```
+
+ถ้า curl ตอบได้ → Arduino ตอบได้แน่นอน
+
+### ข้อจำกัดของ `WiFiSSLClient` บน Arduino
+
+| ข้อจำกัด | รายละเอียด |
+|---------|-----------|
+| ไม่ verify certificate | ยอมรับ cert ทุกใบ (ปลอดภัยพอสำหรับ read-only alert) |
+| TLS 1.2 เท่านั้น | nginx ต้อง support TLS 1.2 (default อยู่แล้ว) |
+| RAM จำกัด 32KB | JSON response ต้องไม่ใหญ่เกินไป (ปัจจุบัน ~200 bytes ไม่มีปัญหา) |
+| ไม่มี SNI บางเวอร์ชัน | ถ้า server มีหลาย domain ร่วม IP อาจต้องทดสอบ |
+
+---
+
 ## ข้อควรระวัง
 
 - **Arduino ต้องอยู่ network เดียวกับ backend** — ถ้าใช้ Docker ต้องเปิด port 18000 ให้ LAN เข้าถึงได้ (ปัจจุบันเปิดอยู่แล้ว)
