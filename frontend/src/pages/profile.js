@@ -18,26 +18,104 @@ const PRESET_NUTRIENTS = [
 let _customCounter = 0
 
 export async function renderProfile(el) {
-  const profile = await getProfile()
   el.innerHTML = ''
+
+  const loggedIn = isLoggedIn()
+  const user     = getUser()
+
+  // ── NOT logged in: show login gate only ──────────────────────────────────
+  if (!loggedIn) {
+    const wrap = document.createElement('div')
+    wrap.className = 'page-enter'
+    wrap.innerHTML = `
+      <div class="page-hero">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="
+            width:54px;height:54px;border-radius:18px;flex:none;
+            background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.28);
+            display:flex;align-items:center;justify-content:center;font-size:26px;
+          ">🧬</div>
+          <div>
+            <div class="page-eyebrow">ข้อมูลส่วนบุคคล · เฉพาะบัญชีคุณ</div>
+            <h1 class="page-title">โปรไฟล์สุขภาพ</h1>
+            <p class="page-sub">ต้องเข้าสู่ระบบก่อนเพื่อจัดการข้อมูล</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" style="padding-top:24px">
+
+        <!-- Login gate card -->
+        <div class="card" style="text-align:center;padding:36px 24px">
+          <div style="font-size:56px;margin-bottom:18px">🔐</div>
+          <div style="font-family:'Bai Jamjuree';font-size:20px;font-weight:800;color:var(--ink);margin-bottom:10px">
+            ต้องเข้าสู่ระบบก่อน
+          </div>
+          <p style="font-size:14px;color:var(--ink-soft);line-height:1.85;margin-bottom:24px;font-weight:400">
+            ข้อมูลโรคประจำตัว อาการแพ้ และค่าสารอาหาร<br>
+            ผูกกับบัญชีของคุณโดยเฉพาะ<br>
+            เพื่อให้ Gemini วิเคราะห์ได้แม่นยำบนทุกอุปกรณ์
+          </p>
+          <button class="btn btn-primary" id="open-auth-btn">
+            เข้าสู่ระบบ / สมัครสมาชิก
+          </button>
+        </div>
+
+        <!-- Feature preview -->
+        <div class="card" style="background:linear-gradient(135deg,#EBF5FF,#DFF0FF);border:1.5px solid rgba(0,119,204,.14)">
+          <div class="section-label" style="color:var(--brand);margin-top:0">หลังจากเข้าสู่ระบบ คุณจะได้</div>
+          <div style="display:flex;flex-direction:column;gap:13px;font-size:14px;color:#2A4A7A;font-weight:400">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-size:20px;flex:none">🩺</span>
+              <span>บันทึกโรคประจำตัว เช่น เบาหวาน ความดัน G6PD</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-size:20px;flex:none">🚫</span>
+              <span>ระบุอาหาร/ส่วนผสมที่แพ้ — Gemini จะแจ้งเตือนทุกครั้ง</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-size:20px;flex:none">🧪</span>
+              <span>ตั้งค่าจำกัดสารอาหารรายวัน เช่น โซเดียม น้ำตาล แคลอรี่</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-size:20px;flex:none">📱</span>
+              <span>ซิงค์โปรไฟล์ข้ามอุปกรณ์ — ใช้ได้ทั้งมือถือและเดสก์ท็อป</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `
+    el.appendChild(wrap)
+
+    wrap.querySelector('#open-auth-btn').addEventListener('click', async () => {
+      const u = await openAuthModal()
+      if (u) {
+        showToast(`ยินดีต้อนรับ ${u.display_name || u.email} ✓`)
+        setTimeout(() => location.reload(), 900)
+      }
+    })
+    return
+  }
+
+  // ── Logged in: load profile then render full form ─────────────────────────
+  const profile = await getProfile()
 
   const wrap = document.createElement('div')
   wrap.className = 'page-enter'
-  const loggedIn  = isLoggedIn()
-  const user       = getUser()
 
   wrap.innerHTML = `
     <div class="page-hero">
       <div style="display:flex;align-items:center;gap:16px">
         <div style="
           width:54px;height:54px;border-radius:18px;flex:none;
-          background:rgba(0,194,81,.15);border:1.5px solid rgba(0,194,81,.3);
+          background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.28);
           display:flex;align-items:center;justify-content:center;font-size:26px;
         ">🧬</div>
         <div>
-          <div class="page-eyebrow">${loggedIn ? '✓ บัญชีเชื่อมต่อแล้ว' : 'เก็บในเครื่อง · IndexedDB'}</div>
+          <div class="page-eyebrow">✓ บัญชีเชื่อมต่อแล้ว</div>
           <h1 class="page-title">โปรไฟล์สุขภาพ</h1>
-          <p class="page-sub">${loggedIn && user?.display_name ? user.display_name : 'ใช้วิเคราะห์ความเหมาะสมของอาหาร'}</p>
+          <p class="page-sub">${escapeHtml(user?.display_name || user?.email || 'โปรไฟล์ของคุณ')}</p>
         </div>
       </div>
     </div>
@@ -45,62 +123,48 @@ export async function renderProfile(el) {
     <div class="page" style="padding-top:20px">
 
       <!-- ── Account card ── -->
-      ${loggedIn ? `
-        <div class="card account-card" id="account-card">
-          <div class="section-label" style="margin-top:0;color:var(--safe-2)">✓ บัญชีของคุณ</div>
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-            <div class="account-avatar">${(user?.display_name || user?.email || '?')[0].toUpperCase()}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-family:'Bai Jamjuree';font-weight:700;font-size:16px;color:var(--ink)"
-                id="acc-name">${escapeHtml(user?.display_name || 'ไม่ระบุชื่อ')}</div>
-              <div style="font-size:13px;color:var(--ink-soft);margin-top:2px">${escapeHtml(user?.email || '')}</div>
-            </div>
-          </div>
-
-          <!-- edit display name -->
-          <button class="btn btn-secondary" id="acc-edit-name-btn"
-            style="font-size:13px;margin-bottom:10px;padding:11px 16px">
-            ✏️ เปลี่ยนชื่อที่แสดง
-          </button>
-
-          <!-- change password toggle -->
-          <button class="btn btn-secondary" id="acc-pw-toggle"
-            style="font-size:13px;margin-bottom:0;padding:11px 16px">
-            🔑 เปลี่ยนรหัสผ่าน
-          </button>
-
-          <div id="acc-pw-form" class="hidden" style="margin-top:12px">
-            <div class="am-field">
-              <label class="am-label">รหัสผ่านปัจจุบัน</label>
-              <input class="am-input" id="acc-cur-pw" type="password" placeholder="••••••••" autocomplete="current-password">
-            </div>
-            <div class="am-field">
-              <label class="am-label">รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)</label>
-              <input class="am-input" id="acc-new-pw" type="password" placeholder="••••••••" autocomplete="new-password">
-            </div>
-            <p class="am-error" id="acc-pw-err"></p>
-            <button class="btn btn-primary" id="acc-pw-save"
-              style="font-size:14px;padding:13px">ยืนยันเปลี่ยนรหัสผ่าน</button>
-          </div>
-
-          <div style="margin-top:14px;padding-top:14px;border-top:1px solid #E8EEF8">
-            <button class="btn" id="acc-logout"
-              style="background:var(--avoid-bg);color:var(--avoid-2);border:1.5px solid var(--avoid-bg-2);font-size:13px;padding:11px">
-              ออกจากระบบ
-            </button>
+      <div class="card account-card" id="account-card">
+        <div class="section-label" style="margin-top:0;color:var(--safe-2)">✓ บัญชีของคุณ</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+          <div class="account-avatar">${(user?.display_name || user?.email || '?')[0].toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Bai Jamjuree';font-weight:700;font-size:16px;color:var(--ink)"
+              id="acc-name">${escapeHtml(user?.display_name || 'ไม่ระบุชื่อ')}</div>
+            <div style="font-size:13px;color:var(--ink-soft);margin-top:2px">${escapeHtml(user?.email || '')}</div>
           </div>
         </div>
-      ` : `
-        <div class="card" style="background:linear-gradient(135deg,#EBF5FF,#DFF0FF);border:1.5px solid rgba(0,119,204,.18)">
-          <div class="section-label" style="color:var(--brand);margin-top:0">🔐 บัญชีผู้ใช้</div>
-          <p style="font-size:13.5px;color:#2A4A7A;font-weight:400;margin-bottom:16px;line-height:1.75">
-            สมัครสมาชิกเพื่อซิงค์โปรไฟล์ข้ามอุปกรณ์ และรักษาประวัติการสแกนไว้บน server
-          </p>
-          <button class="btn btn-primary" id="open-auth-btn" style="font-size:14px">
-            เข้าสู่ระบบ / สมัครสมาชิก
+
+        <button class="btn btn-secondary" id="acc-edit-name-btn"
+          style="font-size:13px;margin-bottom:10px;padding:11px 16px">
+          ✏️ เปลี่ยนชื่อที่แสดง
+        </button>
+
+        <button class="btn btn-secondary" id="acc-pw-toggle"
+          style="font-size:13px;margin-bottom:0;padding:11px 16px">
+          🔑 เปลี่ยนรหัสผ่าน
+        </button>
+
+        <div id="acc-pw-form" class="hidden" style="margin-top:12px">
+          <div class="am-field">
+            <label class="am-label">รหัสผ่านปัจจุบัน</label>
+            <input class="am-input" id="acc-cur-pw" type="password" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <div class="am-field">
+            <label class="am-label">รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)</label>
+            <input class="am-input" id="acc-new-pw" type="password" placeholder="••••••••" autocomplete="new-password">
+          </div>
+          <p class="am-error" id="acc-pw-err"></p>
+          <button class="btn btn-primary" id="acc-pw-save"
+            style="font-size:14px;padding:13px">ยืนยันเปลี่ยนรหัสผ่าน</button>
+        </div>
+
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #E8EEF8">
+          <button class="btn" id="acc-logout"
+            style="background:var(--avoid-bg);color:var(--avoid-2);border:1.5px solid var(--avoid-bg-2);font-size:13px;padding:11px">
+            ออกจากระบบ
           </button>
         </div>
-      `}
+      </div>
 
       <!-- ── ข้อมูลโรคและอาการแพ้ ── -->
       <div class="card">
@@ -198,63 +262,47 @@ export async function renderProfile(el) {
 
   wrap.querySelector('#device-label').textContent = 'Device: ' + getDeviceId().slice(0, 16) + '…'
 
-  // ── Account section events ──────────────────────────────────────────────
-  if (loggedIn) {
-    // open edit-name modal
-    wrap.querySelector('#acc-edit-name-btn').addEventListener('click', () => {
-      openEditNameModal(user?.display_name || '', async (newName) => {
-        await updateDisplayName(newName)
-        patchUser({ display_name: newName })  // sync localStorage ทันที
-        wrap.querySelector('#acc-name').textContent = newName
-        // อัพ hero subtitle ด้วย
-        const sub = wrap.querySelector('.page-sub')
-        if (sub) sub.textContent = newName
-        showToast('บันทึกชื่อแล้ว ✓')
-      })
+  // ── Account section events (always logged-in at this point) ────────────────
+  wrap.querySelector('#acc-edit-name-btn').addEventListener('click', () => {
+    openEditNameModal(user?.display_name || '', async (newName) => {
+      await updateDisplayName(newName)
+      patchUser({ display_name: newName })
+      wrap.querySelector('#acc-name').textContent = newName
+      const sub = wrap.querySelector('.page-sub')
+      if (sub) sub.textContent = newName
+      showToast('บันทึกชื่อแล้ว ✓')
     })
+  })
 
-    // toggle change-password form
-    wrap.querySelector('#acc-pw-toggle').addEventListener('click', () => {
-      const form = wrap.querySelector('#acc-pw-form')
-      form.classList.toggle('hidden')
-      if (!form.classList.contains('hidden'))
-        wrap.querySelector('#acc-cur-pw').focus()
-    })
+  wrap.querySelector('#acc-pw-toggle').addEventListener('click', () => {
+    const form = wrap.querySelector('#acc-pw-form')
+    form.classList.toggle('hidden')
+    if (!form.classList.contains('hidden')) wrap.querySelector('#acc-cur-pw').focus()
+  })
 
-    // change password submit
-    wrap.querySelector('#acc-pw-save').addEventListener('click', async () => {
-      const curPw = wrap.querySelector('#acc-cur-pw').value
-      const newPw = wrap.querySelector('#acc-new-pw').value
-      const errEl = wrap.querySelector('#acc-pw-err')
-      errEl.textContent = ''
-      if (newPw.length < 8) { errEl.textContent = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว'; return }
-      try {
-        await changePassword({ currentPassword: curPw, newPassword: newPw })
-        wrap.querySelector('#acc-pw-form').classList.add('hidden')
-        wrap.querySelector('#acc-cur-pw').value = ''
-        wrap.querySelector('#acc-new-pw').value = ''
-        showToast('เปลี่ยนรหัสผ่านแล้ว ✓')
-      } catch (err) { errEl.textContent = err.message }
-    })
+  wrap.querySelector('#acc-pw-save').addEventListener('click', async () => {
+    const curPw = wrap.querySelector('#acc-cur-pw').value
+    const newPw = wrap.querySelector('#acc-new-pw').value
+    const errEl = wrap.querySelector('#acc-pw-err')
+    errEl.textContent = ''
+    if (newPw.length < 8) { errEl.textContent = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว'; return }
+    try {
+      await changePassword({ currentPassword: curPw, newPassword: newPw })
+      wrap.querySelector('#acc-pw-form').classList.add('hidden')
+      wrap.querySelector('#acc-cur-pw').value = ''
+      wrap.querySelector('#acc-new-pw').value = ''
+      showToast('เปลี่ยนรหัสผ่านแล้ว ✓')
+    } catch (err) { errEl.textContent = err.message }
+  })
 
-    // logout
-    wrap.querySelector('#acc-logout').addEventListener('click', () => {
-      logout()
-      clearAuth()
-      showToast('ออกจากระบบแล้ว')
-      setTimeout(() => location.reload(), 800)
-    })
-  } else {
-    // open auth modal
-    wrap.querySelector('#open-auth-btn').addEventListener('click', async () => {
-      const user = await openAuthModal()
-      if (user) {
-        showToast(`ยินดีต้อนรับ ${user.display_name || user.email} ✓`)
-        setTimeout(() => location.reload(), 900)
-      }
-    })
-  }
+  wrap.querySelector('#acc-logout').addEventListener('click', () => {
+    logout()
+    clearAuth()
+    showToast('ออกจากระบบแล้ว')
+    setTimeout(() => location.reload(), 800)
+  })
 
+  // ── Health profile form ────────────────────────────────────────────────────
   setupTagInput(wrap, 'cond-wrap',    'cond-input',    profile.conditions ?? [])
   setupTagInput(wrap, 'allergy-wrap', 'allergy-input', profile.allergies ?? [])
   setupTagInput(wrap, 'avoid-wrap',   'avoid-input',   profile.avoid_ingredients ?? [])
@@ -268,7 +316,6 @@ export async function renderProfile(el) {
   })
 
   wrap.querySelector('#save-btn').addEventListener('click', async () => {
-    // flush any text still in tag inputs (user typed but didn't press Enter)
     for (const id of ['cond-input', 'allergy-input', 'avoid-input']) {
       const inp = wrap.querySelector(`#${id}`)
       if (inp?.value.trim())
@@ -287,9 +334,7 @@ export async function renderProfile(el) {
     btn.disabled = true
     try {
       await saveProfile(newProfile)
-      // use the authenticated user's device_id if available (cross-device correctness)
-      const syncDeviceId = (loggedIn && user?.device_id) ? user.device_id : getDeviceId()
-      syncProfile(syncDeviceId, newProfile).catch(() => {})
+      syncProfile(user?.device_id ?? getDeviceId(), newProfile).catch(() => {})
       showToast('บันทึกแล้ว ✓')
     } catch (err) {
       showToast('❌ บันทึกไม่สำเร็จ กรุณาลองใหม่')
@@ -302,7 +347,7 @@ export async function renderProfile(el) {
   wrap.querySelector('#delete-btn').addEventListener('click', async () => {
     if (!confirm('ลบข้อมูลทั้งหมดหรือไม่?\n(โปรไฟล์สุขภาพ + ประวัติการสแกน)\nไม่สามารถกู้คืนได้')) return
     await clearAllData()
-    await deleteAccount(getDeviceId()).catch(() => {})
+    await deleteAccount(user?.device_id ?? getDeviceId()).catch(() => {})
     clearAuth()
     showToast('ลบข้อมูลทั้งหมดแล้ว')
     setTimeout(() => location.reload(), 1200)
