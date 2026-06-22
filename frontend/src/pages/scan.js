@@ -15,11 +15,18 @@ export async function renderScan(el) {
   const wrap = document.createElement('div')
   wrap.className = 'page-enter'
   wrap.innerHTML = `
-    <!-- dark brand header -->
     <div class="page-hero">
-      <div class="page-eyebrow">Gemini 2.5 Flash · AI</div>
-      <h1 class="page-title">สแกนฉลากอาหาร</h1>
-      <p class="page-sub">ถ่ายภาพฉลาก หรือพิมพ์รายการส่วนผสม</p>
+      <div class="hero-brand">
+        <div class="hero-brand-icon">🍽️</div>
+        <div>
+          <div class="hero-brand-name">กินเลย</div>
+          <div class="hero-brand-team">สามหัวหมูตุ๋น</div>
+        </div>
+      </div>
+      <div class="hero-content">
+        <h1 class="page-title">สแกนฉลากอาหาร</h1>
+        <p class="page-sub">ถ่ายภาพฉลาก หรือพิมพ์รายการส่วนผสม</p>
+      </div>
     </div>
 
     <div class="page" style="padding-top:20px">
