@@ -1,4 +1,5 @@
 import { authHeader, setAuth, clearAuth } from './auth.js'
+import { saveProfile } from './db.js'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -53,6 +54,7 @@ export async function register({ email, password, displayName, deviceId }) {
     body: JSON.stringify({ email, password, display_name: displayName ?? null, device_id: deviceId ?? null }),
   }))
   setAuth(data.token, data.user)
+  await _syncProfileFromServer(data.user.device_id)
   return data
 }
 
@@ -63,7 +65,19 @@ export async function login({ email, password }) {
     body: JSON.stringify({ email, password }),
   }))
   setAuth(data.token, data.user)
+  await _syncProfileFromServer(data.user.device_id)
   return data
+}
+
+async function _syncProfileFromServer(deviceId) {
+  try {
+    const res = await fetch(`${BASE}/profile/${deviceId}`)
+    if (!res.ok) return
+    const { health_profile } = await res.json()
+    if (health_profile && Object.keys(health_profile).length > 0) {
+      await saveProfile(health_profile)
+    }
+  } catch { /* non-fatal */ }
 }
 
 export async function getMe() {

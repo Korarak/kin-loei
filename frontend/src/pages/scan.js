@@ -1,10 +1,16 @@
 import { startCamera, stopCamera, captureFrame, fileToBlob, hasCameraSupport } from '../camera.js'
 import { getProfile, getDeviceId, saveScan } from '../db.js'
 import { scanFood } from '../api.js'
+import { isLoggedIn, getUser } from '../auth.js'
 
 export async function renderScan(el) {
   stopCamera()
   el.innerHTML = ''
+
+  const profile    = await getProfile()
+  const loggedIn   = isLoggedIn()
+  const user       = getUser()
+  const hasProfile = (profile.conditions?.length || profile.allergies?.length || profile.avoid_ingredients?.length)
 
   const wrap = document.createElement('div')
   wrap.className = 'page-enter'
@@ -17,6 +23,31 @@ export async function renderScan(el) {
     </div>
 
     <div class="page" style="padding-top:20px">
+
+      <!-- profile badge -->
+      ${hasProfile ? `
+        <div class="profile-badge">
+          <span class="pb-icon">🧬</span>
+          <div class="pb-body">
+            <div class="pb-title">${loggedIn ? `วิเคราะห์สำหรับ ${escapeHtml(user?.display_name || user?.email || 'คุณ')}` : 'ใช้โปรไฟล์สุขภาพของคุณ'}</div>
+            <div class="pb-tags">
+              ${(profile.conditions ?? []).map(c => `<span class="pb-tag cond">${escapeHtml(c)}</span>`).join('')}
+              ${(profile.allergies ?? []).map(a => `<span class="pb-tag allergy">แพ้ ${escapeHtml(a)}</span>`).join('')}
+              ${(profile.avoid_ingredients ?? []).slice(0, 2).map(v => `<span class="pb-tag avoid">เลี่ยง ${escapeHtml(v)}</span>`).join('')}
+            </div>
+          </div>
+          <a href="#/profile" class="pb-edit">แก้ไข</a>
+        </div>
+      ` : `
+        <div class="profile-badge pb-empty">
+          <span class="pb-icon">🧬</span>
+          <div class="pb-body">
+            <div class="pb-title" style="color:var(--ink-soft)">ยังไม่มีโปรไฟล์สุขภาพ</div>
+            <div style="font-size:11.5px;color:var(--ink-faint)">เพิ่มโรคประจำตัว/อาการแพ้เพื่อผลวิเคราะห์ที่แม่นยำขึ้น</div>
+          </div>
+          <a href="#/profile" class="pb-edit">เพิ่ม</a>
+        </div>
+      `}
 
       <!-- camera / preview area -->
       <div id="cam-container"></div>
@@ -220,4 +251,10 @@ function showToast(msg, isError = false) {
   t.textContent = msg
   document.body.appendChild(t)
   setTimeout(() => t.remove(), isError ? 4000 : 2200)
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }

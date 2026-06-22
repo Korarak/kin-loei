@@ -406,6 +406,40 @@ img { display: block; }
 .tag-input::placeholder { color: var(--ink-faint); }
 
 /* ═══════════════════════════════════════════════
+   PROFILE BADGE — scan page context strip
+   ═══════════════════════════════════════════════ */
+.profile-badge {
+  display: flex; align-items: center; gap: 11px;
+  padding: 13px 16px; border-radius: 18px; margin-bottom: 14px;
+  background: var(--safe-bg); border: 1.5px solid var(--safe-bg-2);
+}
+.profile-badge.pb-empty {
+  background: var(--bg-2); border-color: #D0DCF0;
+}
+.pb-icon { font-size: 22px; flex: none; }
+.pb-body { flex: 1; min-width: 0; }
+.pb-title {
+  font-family: 'Bai Jamjuree'; font-size: 13px; font-weight: 700;
+  color: var(--safe-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+.pb-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.pb-tag {
+  font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px;
+}
+.pb-tag.cond    { background: #E0F0FF; color: var(--brand); }
+.pb-tag.allergy { background: var(--avoid-bg-2); color: var(--avoid-2); }
+.pb-tag.avoid   { background: var(--caution-bg-2); color: var(--caution-2); }
+.pb-edit {
+  font-size: 12px; font-weight: 700; color: var(--brand);
+  font-family: 'IBM Plex Mono'; white-space: nowrap; flex: none;
+  padding: 6px 12px; border-radius: 20px;
+  background: var(--brand-light); border: 1px solid rgba(0,119,204,.18);
+  text-decoration: none;
+}
+.pb-edit:hover { background: rgba(0,119,204,.15); }
+
+/* ═══════════════════════════════════════════════
    CAMERA — clean medical scanner
    ═══════════════════════════════════════════════ */
 .camera-wrap {

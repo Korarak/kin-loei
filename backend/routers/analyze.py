@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -11,6 +12,9 @@ logger = logging.getLogger(__name__)
 from core.database import get_db
 from core.gemini import analyze_food, search_product_info
 from core.models import User, Scan
+from core.auth import decode_optional
+
+_bearer_opt = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/analyze", tags=["analyze"])
 
@@ -41,6 +45,7 @@ async def scan_food(
     text_input: str | None = Form(None),
     image: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer_opt),
 ):
     # validate image
     image_b64 = None
@@ -68,20 +73,42 @@ async def scan_food(
         raise HTTPException(400, "กรุณาส่งภาพหรือข้อความอย่างน้อยหนึ่งอย่าง")
 
     try:
-        profile = json.loads(health_profile)
+        client_profile = json.loads(health_profile)
     except json.JSONDecodeError:
         raise HTTPException(400, "health_profile ไม่ใช่ JSON ที่ถูกต้อง")
 
-    # get or create user
-    result = await db.execute(select(User).where(User.device_id == device_id))
-    user = result.scalar_one_or_none()
+    # ── resolve user ──────────────────────────────────────────────────────────
+    # Priority: JWT auth user > device_id lookup > create new anonymous user
+    jwt_payload = decode_optional(creds)
+    user: User | None = None
+
+    if jwt_payload:
+        try:
+            user = await db.get(User, int(jwt_payload["sub"]))
+        except (ValueError, KeyError):
+            pass
+
     if not user:
-        user = User(device_id=device_id, health_profile=profile)
+        res = await db.execute(select(User).where(User.device_id == device_id))
+        user = res.scalar_one_or_none()
+
+    if not user:
+        # brand-new anonymous session
+        user = User(device_id=device_id, health_profile=client_profile)
         db.add(user)
         await db.flush()
+
+    # ── resolve profile ───────────────────────────────────────────────────────
+    # Authenticated → DB profile is authoritative; never overwrite from client
+    # Anonymous     → client profile is source of truth; save to DB
+    if jwt_payload and user.health_profile:
+        profile = user.health_profile
+        logger.info("[Scan] using DB profile for authenticated user %s", user.id)
+    elif client_profile:
+        user.health_profile = client_profile   # update DB with latest client data
+        profile = client_profile
     else:
-        if profile:
-            user.health_profile = profile
+        profile = user.health_profile or {}    # fall back to whatever is in DB
 
     # call gemini
     try:
