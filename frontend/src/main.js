@@ -62,9 +62,10 @@ if ('serviceWorker' in navigator) {
 // ── PWA install banner ──
 let deferredPrompt = null
 window.addEventListener('beforeinstallprompt', e => {
+  if (sessionStorage.getItem('kinloei_install_dismissed')) return  // let browser handle natively
+
   e.preventDefault()
   deferredPrompt = e
-  if (sessionStorage.getItem('kinloei_install_dismissed')) return
 
   const banner = document.createElement('div')
   banner.className = 'install-banner'
@@ -81,7 +82,7 @@ window.addEventListener('beforeinstallprompt', e => {
 
   banner.querySelector('#ib-install').addEventListener('click', async () => {
     banner.remove()
-    deferredPrompt?.prompt()
+    await deferredPrompt?.prompt()
     const choice = await deferredPrompt?.userChoice
     if (choice?.outcome === 'accepted') sessionStorage.setItem('kinloei_install_dismissed', '1')
     deferredPrompt = null
