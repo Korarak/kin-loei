@@ -52,8 +52,6 @@
   --radius-sm: 16px;
   --radius-xs: 12px;
 
-  /* ── Top bar ─────────────────────────────────── */
-  --top-bar-h:   52px;
   --safe-top:    env(safe-area-inset-top, 0px);
 
   /* ── Floating nav ─────────────────────────────── */
@@ -79,7 +77,7 @@ body {
   background: var(--bg);
   color: var(--ink); line-height: 1.65; font-weight: 400;
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
-  padding-top: calc(var(--top-bar-h) + var(--safe-top));
+  padding-top: var(--safe-top);
   padding-bottom: calc(var(--nav-h) + var(--nav-gap) + var(--safe-bottom) + 24px);
   min-height: 100dvh;
 }
@@ -134,20 +132,54 @@ img { display: block; }
   display: flex; align-items: center; gap: 9px;
 }
 .top-bar-icon {
-  width: 30px; height: 30px; border-radius: 9px; flex: none;
+  width: 40px; height: 40px; border-radius: 12px; flex: none;
   background: linear-gradient(135deg, #1A8FEB, #004E99);
   display: flex; align-items: center; justify-content: center;
-  font-size: 15px;
-  box-shadow: 0 2px 8px rgba(0,119,204,.3);
+  font-size: 20px;
+  box-shadow: 0 2px 10px rgba(0,119,204,.32);
 }
 .top-bar-name {
   font-family: 'Bai Jamjuree'; font-weight: 800;
-  font-size: 19px; color: var(--brand); letter-spacing: -.025em;
+  font-size: 24px; color: var(--brand); letter-spacing: -.03em;
+  line-height: 1.1;
 }
+.top-bar-team {
+  font-family: 'IBM Plex Mono'; font-size: 10.5px; font-weight: 500;
+  color: var(--ink-faint); letter-spacing: .05em;
+  margin-top: 2px;
+}
+
+/* ── Hero brand — absolute top-left of hero ───── */
+.hero-brand {
+  position: absolute;
+  top: calc(var(--safe-top) + 14px);
+  left: 0;
+  z-index: 2;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-brand-icon {
+  width: 48px; height: 48px; border-radius: 15px; flex: none;
+  background: rgba(255,255,255,.2); border: 1.5px solid rgba(255,255,255,.32);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.14);
+}
+.hero-brand-name {
+  font-family: 'Bai Jamjuree'; font-weight: 800;
+  font-size: 28px; color: #fff; letter-spacing: -.035em; line-height: 1;
+  text-shadow: 0 2px 10px rgba(0,0,0,.18);
+}
+.hero-brand-team {
+  font-family: 'IBM Plex Mono'; font-size: 10.5px; font-weight: 500;
+  color: rgba(255,255,255,.62); letter-spacing: .06em;
+  margin-top: 4px;
+}
+/* hero main content — pushed below the brand */
+.hero-content { padding-top: 76px; }
 
 .page-hero {
   background: linear-gradient(148deg, #0088E0 0%, #0066BB 50%, #004A99 100%);
-  padding: 18px 20px 38px;
+  padding: 28px 20px 40px;
   position: relative; overflow: hidden;
 }
 /* Subtle dot grid — sterile/clinical */
@@ -1045,7 +1077,7 @@ a.pill-src:hover { background: var(--brand-light); color: var(--brand); border-c
 @media (max-width: 480px) {
   .page        { padding: 14px 14px 24px; }
   .page-header { padding: 24px 14px 16px; }
-  .page-hero   { padding: 14px 16px 28px; }
+  .page-hero   { padding: 22px 16px 32px; }
   .bottom-nav  { left: 10px; right: 10px; }
 }
 
