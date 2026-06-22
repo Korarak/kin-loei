@@ -266,6 +266,120 @@ void pollAlert() {
 
 ---
 
+## การใช้งานผ่าน Local Network (192.168.x.x)
+
+### เมื่อไหรที่ควรใช้โหมด Local
+
+| สถานการณ์ | โหมดที่แนะนำ |
+|-----------|-------------|
+| ทดสอบในห้องเรียน / lab ที่มี WiFi ร่วมกัน | **Local LAN** |
+| งาน demo / นิทรรศการ — ไม่ต้องพึ่ง internet | **Local LAN** |
+| Deploy จริงบน domain `kinloei-api.loeitech.org` | **Production HTTPS** |
+| บอร์ดอยู่นอก network โรงเรียน (มือถือ hotspot) | **Production HTTPS** |
+
+### สิ่งที่ต้องรู้ก่อนใช้ Local LAN
+
+**1. Docker ต้อง expose port 18000 ออก LAN**
+
+ตรวจ `docker-compose.yml` ว่ามี:
+```yaml
+backend:
+  ports:
+    - "18000:8000"   # host:container
+```
+ถ้ามีแค่ `expose: ["8000"]` โดยไม่มี `ports` → Arduino เข้าไม่ได้ ต้องแก้เป็น `ports`
+
+**2. หา IP เครื่อง server**
+```bash
+# Windows
+ipconfig | findstr "IPv4"
+
+# Linux / Mac
+ip addr show | grep "inet " | grep -v 127
+```
+ได้ IP เช่น `192.168.1.105` → ใส่ใน sketch
+
+**3. Firewall ต้องเปิด port 18000**
+```bash
+# Windows — เปิด port 18000 ชั่วคราว
+netsh advfirewall firewall add rule name="kinloei-api" dir=in action=allow protocol=TCP localport=18000
+```
+
+**4. Arduino และ server ต้องอยู่ WiFi วง subnet เดียวกัน**
+- ทั้งคู่ต้อง connect WiFi AP เดียวกัน
+- บอร์ดคนละ VLAN / Guest WiFi อาจ block กันได้
+
+---
+
+### Network Diagram เปรียบเทียบทั้งสองโหมด
+
+```
+── LOCAL LAN MODE (USE_HTTPS 0) ─────────────────────────────
+
+[Arduino R4 WiFi]
+    │  WiFiClient (HTTP plain)
+    │  GET http://192.168.1.105:18000/hardware/alert
+    ▼
+[LAN Switch / WiFi Router]
+    │  ไม่ผ่าน internet
+    ▼
+[เครื่อง server บน LAN :18000]
+    │  Docker → FastAPI
+    └─► { "level": 3, ... }
+
+
+── PRODUCTION MODE (USE_HTTPS 1) ────────────────────────────
+
+[Arduino R4 WiFi]
+    │  WiFiSSLClient (HTTPS / TLS 1.2)
+    │  GET https://kinloei-api.loeitech.org/hardware/alert
+    ▼
+[อินเทอร์เน็ต]
+    ▼
+[nginx :443]  ← terminate TLS
+    │  proxy_pass http://localhost:18000
+    ▼
+[FastAPI :18000]
+    └─► { "level": 3, ... }
+```
+
+---
+
+### วิธีสลับโหมดใน sketch — แก้บรรทัดเดียว
+
+```cpp
+// ── LOCAL LAN ──
+#define USE_HTTPS  0
+
+// แล้วแก้ IP ตรงนี้ด้วย:
+const char* SERVER_HOST = "192.168.1.105";   // IP เครื่อง server
+const int   SERVER_PORT = 18000;
+```
+
+```cpp
+// ── PRODUCTION ──
+#define USE_HTTPS  1
+// SERVER_HOST / SERVER_PORT ถูกเลือกอัตโนมัติจาก #if
+```
+
+**ทำไมต้อง `#define` ไม่ใช้ `bool`?**
+เพราะ `WiFiSSLClient` กับ `WiFiClient` เป็นคนละ type — C++ ต้อง resolve ตอน compile
+การใช้ `#if USE_HTTPS` ทำให้ compiler เลือก type ที่ถูกต้อง ถ้าใช้ `if(bool)` จะ compile error
+
+---
+
+### ทดสอบ Local LAN ก่อน upload sketch
+
+```bash
+# จากมือถือหรือ PC ที่อยู่ WiFi เดียวกัน
+curl http://192.168.1.105:18000/hardware/alert
+
+# ถ้าตอบ JSON → Arduino เข้าถึงได้แน่นอน
+# ถ้า timeout → ตรวจ firewall / Docker ports
+```
+
+---
+
 ## Network Diagram (Production)
 
 ```
@@ -327,14 +441,27 @@ curl -X POST https://kinloei-api.loeitech.org/hardware/alert \
 
 ## Checklist ก่อนนำไปใช้จริง
 
+### ฝั่ง Software (เสร็จแล้ว ✅)
 - [x] `backend/routers/hardware.py` implement POST + GET
 - [x] Register router ใน `backend/main.py`
 - [x] `frontend/src/api.js` เพิ่ม `pushHardwareAlert()`
 - [x] `frontend/src/pages/result.js` POST หลัง render result
-- [ ] Arduino sketch: แก้ SSID / PASSWORD / DEVICE_ID
-- [ ] ทดสอบ curl จากภายนอก network ก่อน upload sketch
-- [ ] เปิด Serial Monitor ดู log ขณะ Arduino poll
-- [ ] ยืนยัน LED ตอบสนองถูกต้องทั้ง 3 level
+
+### ฝั่ง Arduino — Local LAN Mode
+- [ ] `#define USE_HTTPS 0`
+- [ ] แก้ `SERVER_HOST` เป็น IP เครื่อง server (ดูจาก `ipconfig`)
+- [ ] แก้ `WIFI_SSID` / `WIFI_PASSWORD`
+- [ ] ตรวจ Docker `ports: "18000:8000"` ใน docker-compose.yml
+- [ ] ทดสอบ `curl http://192.168.x.x:18000/hardware/alert` จากมือถือ
+- [ ] Upload sketch → เปิด Serial Monitor ยืนยัน poll
+- [ ] ยืนยัน LED ตอบสนองทั้ง 3 level
+
+### ฝั่ง Arduino — Production Mode
+- [ ] `#define USE_HTTPS 1`
+- [ ] แก้ `WIFI_SSID` / `WIFI_PASSWORD`
+- [ ] ทดสอบ `curl https://kinloei-api.loeitech.org/hardware/alert` จากมือถือ 4G
+- [ ] Upload sketch → เปิด Serial Monitor ยืนยัน poll
+- [ ] ยืนยัน LED ตอบสนองทั้ง 3 level
 
 ---
 

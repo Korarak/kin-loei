@@ -3,12 +3,12 @@
  * Arduino Uno R4 WiFi + Modulino Pixel (8× RGB LED)
  *
  * Poll GET /hardware/alert ทุก 2 วินาที
- * แสดงระดับความรุนแรงของสารก่อภูมิแพ้
+ * แสดงระดับความรุนแรงของสารก่อภูมิแพ้ด้วย LED สี
  *
- * Libraries ที่ต้องติดตั้ง:
- *   WiFiS3          (built-in กับ Arduino R4 WiFi)
+ * Libraries ที่ต้องติดตั้ง (Arduino IDE → Library Manager):
+ *   WiFiS3           — built-in กับ Arduino R4 WiFi
  *   ArduinoHttpClient
- *   ArduinoJson     (v7.x)
+ *   ArduinoJson      — v7.x
  *   Arduino_Modulino
  */
 
@@ -17,54 +17,75 @@
 #include <ArduinoJson.h>
 #include <Modulino.h>
 
-// ── User Config ── แก้ค่าเหล่านี้ก่อน upload ─────────
+// ════════════════════════════════════════════════════════
+//  STEP 1 — เลือกโหมดการเชื่อมต่อ (แก้บรรทัดเดียว)
+//
+//   1  = Production  →  HTTPS  kinloei-api.loeitech.org
+//   0  = Local LAN   →  HTTP   192.168.x.x:18000
+// ════════════════════════════════════════════════════════
+#define USE_HTTPS  1
+
+// ════════════════════════════════════════════════════════
+//  STEP 2 — WiFi credentials
+// ════════════════════════════════════════════════════════
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-// โหมด production (HTTPS บน domain จริง)
-const char* SERVER_HOST    = "kinloei-loeitech.ac.th";
-const int   SERVER_PORT    = 443;
-const bool  USE_HTTPS      = true;
+// ════════════════════════════════════════════════════════
+//  STEP 3 — Server config (เลือกตาม mode ด้านบน)
+// ════════════════════════════════════════════════════════
+#if USE_HTTPS
+  // Production — HTTPS ผ่าน nginx บน domain จริง
+  const char* SERVER_HOST = "kinloei-api.loeitech.org";
+  const int   SERVER_PORT = 443;
+  WiFiSSLClient _netClient;
+#else
+  // Local LAN — HTTP ตรงไปยัง Docker backend
+  // หา IP เครื่อง server ด้วย: ipconfig (Windows) / ip addr (Linux)
+  const char* SERVER_HOST = "192.168.1.100";   // ← แก้ให้ตรง
+  const int   SERVER_PORT = 18000;
+  WiFiClient  _netClient;
+#endif
 
-// โหมด local dev (HTTP บน LAN) — สลับมาใช้ถ้าทดสอบในบ้าน
-// const char* SERVER_HOST = "192.168.1.100";
-// const int   SERVER_PORT = 18000;
-// const bool  USE_HTTPS   = false;
+// ════════════════════════════════════════════════════════
+//  STEP 4 — Device ID (ต้องตรงกับที่ frontend ส่งมา)
+// ════════════════════════════════════════════════════════
+const char* DEVICE_ID = "arduino-001";
 
-const char* DEVICE_ID      = "arduino-001";
-// ──────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────
+const int POLL_INTERVAL = 2000;   // ms ระหว่าง poll
+const int MAX_FAIL      = 5;      // ครั้ง fail ก่อนแสดง error LED
 
-const int   POLL_INTERVAL  = 2000;  // ms
-const int   MAX_FAIL       = 5;     // ครั้งที่ fail ก่อน error indicator
-
+HttpClient    http(_netClient, SERVER_HOST, SERVER_PORT);
 ModulinoPixels pixels;
-WiFiSSLClient  wifiSSL;   // HTTPS
-WiFiClient     wifiPlain; // HTTP (local dev)
-HttpClient     http(wifiSSL, SERVER_HOST, SERVER_PORT); // default HTTPS
 
-int           currentLevel = -1;   // -1 = ยังไม่ได้รับข้อมูล
+int           currentLevel = -1;
 bool          ledState     = false;
 unsigned long lastPoll     = 0;
 unsigned long lastBlink    = 0;
 int           failCount    = 0;
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 3000);
 
-  // Init Modulino Pixel
+  Serial.println("=== กินเลย Hardware Alert ===");
+#if USE_HTTPS
+  Serial.println("[Mode] Production HTTPS → " + String(SERVER_HOST));
+#else
+  Serial.println("[Mode] Local LAN HTTP → " + String(SERVER_HOST) + ":" + String(SERVER_PORT));
+#endif
+
   Modulino.begin();
   pixels.begin();
-  pixels.clear();
-  pixels.show();
 
-  // Show "booting" (ขาว)
-  for (int i = 0; i < 8; i++) pixels.set(i, ModulinoColor(20, 20, 20));
+  // LED ขาวหรี่ระหว่าง boot
+  for (int i = 0; i < 8; i++) pixels.set(i, ModulinoColor(15, 15, 15));
   pixels.show();
 
   // Connect WiFi
-  Serial.print("[WiFi] Connecting");
+  Serial.print("[WiFi] Connecting to " + String(WIFI_SSID));
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   int attempt = 0;
   while (WiFi.status() != WL_CONNECTED && attempt < 30) {
@@ -75,58 +96,58 @@ void setup() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n[WiFi] Connected: " + WiFi.localIP().toString());
+    Serial.println("[Poll] Starting → https://" + String(SERVER_HOST) + "/hardware/alert");
     pixels.clear();
     pixels.show();
   } else {
-    Serial.println("\n[WiFi] FAILED — check SSID/password");
-    showWiFiError();
+    Serial.println("\n[WiFi] FAILED — ตรวจสอบ SSID/PASSWORD");
+    blinkError(ModulinoColor(0, 0, 255), 3);   // ฟ้า 3 ครั้ง = WiFi fail
   }
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
 void loop() {
   unsigned long now = millis();
 
-  // Poll backend
   if (now - lastPoll >= POLL_INTERVAL) {
     lastPoll = now;
     pollAlert();
   }
 
-  // Non-blocking LED animation
   animate(now);
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
 void pollAlert() {
-  String path = "/hardware/alert?device_id=";
-  path += DEVICE_ID;
+  String path = "/hardware/alert?device_id=" + String(DEVICE_ID);
 
   http.get(path);
-  int    statusCode = http.responseStatusCode();
-  String body       = http.responseBody();
+  int    code = http.responseStatusCode();
+  String body = http.responseBody();
 
-  if (statusCode != 200) {
+  if (code != 200) {
     failCount++;
-    Serial.printf("[HTTP] Error %d (fail %d/%d)\n", statusCode, failCount, MAX_FAIL);
-    if (failCount >= MAX_FAIL) showWiFiError();
+    Serial.printf("[HTTP] %d — fail %d/%d\n", code, failCount, MAX_FAIL);
+    if (failCount >= MAX_FAIL) {
+      blinkError(ModulinoColor(0, 80, 255), 1);   // ฟ้าวับ = network error
+    }
     return;
   }
   failCount = 0;
 
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, body);
-  if (err) {
+  if (deserializeJson(doc, body) != DeserializationError::Ok) {
     Serial.println("[JSON] Parse error");
     return;
   }
 
-  int     newLevel = doc["level"] | 0;
-  String  status   = doc["status"] | "";
-  String  product  = doc["product_name"] | "";
+  int    newLevel = doc["level"]        | 0;
+  String status   = doc["status"]       | "?";
+  String product  = doc["product_name"] | "";
+  int    expiresIn = doc["expires_in"]  | 0;
 
-  Serial.printf("[Alert] level=%d status=%s product=%s\n",
-                newLevel, status.c_str(), product.c_str());
+  Serial.printf("[Alert] level=%d  status=%s  expires_in=%ds  product=%s\n",
+                newLevel, status.c_str(), expiresIn, product.c_str());
 
   if (newLevel != currentLevel) {
     currentLevel = newLevel;
@@ -136,73 +157,64 @@ void pollAlert() {
   }
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
 void applyLevel(int level) {
   pixels.clear();
   switch (level) {
-    case 0:
-      // ดับ — ไม่มี alert หรือหมดอายุ
+    case 0:   // ดับ — ไม่มี alert หรือหมดอายุ
+      Serial.println("[LED] OFF — no alert");
       break;
 
-    case 1:
-      // SAFE — เขียวหรี่คงที่
+    case 1:   // SAFE — เขียวหรี่คงที่
+      Serial.println("[LED] GREEN — SAFE");
       for (int i = 0; i < 8; i++)
         pixels.set(i, ModulinoColor(0, 50, 0));
       break;
 
-    case 2:
-      // CAUTION — เหลืองอำพัน (animation loop ใน animate())
+    case 2:   // CAUTION — เหลืองอำพัน pulse (ทำใน animate)
+      Serial.println("[LED] AMBER pulse — CAUTION");
       for (int i = 0; i < 8; i++)
         pixels.set(i, ModulinoColor(255, 140, 0));
       break;
 
-    case 3:
-      // AVOID — แดงสว่าง (animation loop ใน animate())
+    case 3:   // AVOID — แดง flash เร็ว (ทำใน animate)
+      Serial.println("[LED] RED flash — AVOID");
       for (int i = 0; i < 8; i++)
         pixels.set(i, ModulinoColor(255, 0, 0));
       break;
-
-    default:
-      break;
   }
   pixels.show();
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
 void animate(unsigned long now) {
-  if (currentLevel == 2) {
-    // CAUTION: pulse ช้า ทุก 800ms
+  if (currentLevel == 2) {           // CAUTION: pulse ทุก 800ms
     if (now - lastBlink >= 800) {
       lastBlink = now;
       ledState  = !ledState;
-      for (int i = 0; i < 8; i++) {
-        pixels.set(i, ledState
-          ? ModulinoColor(255, 140, 0)
-          : ModulinoColor(0,   0,   0));
-      }
+      for (int i = 0; i < 8; i++)
+        pixels.set(i, ledState ? ModulinoColor(255, 140, 0) : ModulinoColor(0, 0, 0));
       pixels.show();
     }
-  } else if (currentLevel == 3) {
-    // AVOID: flash เร็ว ทุก 280ms
+  } else if (currentLevel == 3) {   // AVOID: flash ทุก 280ms
     if (now - lastBlink >= 280) {
       lastBlink = now;
       ledState  = !ledState;
-      for (int i = 0; i < 8; i++) {
-        pixels.set(i, ledState
-          ? ModulinoColor(255, 0, 0)
-          : ModulinoColor(0,   0, 0));
-      }
+      for (int i = 0; i < 8; i++)
+        pixels.set(i, ledState ? ModulinoColor(255, 0, 0) : ModulinoColor(0, 0, 0));
       pixels.show();
     }
   }
 }
 
-// ─────────────────────────────────────────────────────
-void showWiFiError() {
-  // ฟ้าวับสั้น — บอก WiFi/backend ไม่ได้
-  for (int i = 0; i < 8; i++) pixels.set(i, ModulinoColor(0, 80, 255));
-  pixels.show();
-  delay(150);
-  pixels.clear();
-  pixels.show();
+// ─────────────────────────────────────────────────────────
+void blinkError(ModulinoColor color, int times) {
+  for (int t = 0; t < times; t++) {
+    for (int i = 0; i < 8; i++) pixels.set(i, color);
+    pixels.show();
+    delay(150);
+    pixels.clear();
+    pixels.show();
+    if (t < times - 1) delay(150);
+  }
 }
